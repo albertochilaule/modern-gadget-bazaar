@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,13 +33,41 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface Product {
+  id: string;
+  name: string;
+  brand: string;
+  category: string;
+  price: string;
+  stock: number;
+  status: 'Ativo' | 'Inativo' | 'Estoque Baixo';
+  image?: string;
+  processor?: string;
+  memory?: string;
+  storage?: string;
+  screenSize?: string;
+  operatingSystem?: string;
+  // Add other properties that might be in editProduct
+  graphics?: string;
+  display?: string;
+  battery?: string;
+  os?: string;
+  weight?: string;
+  dimensions?: string;
+  colors?: string;
+  warranty?: string;
+  shortDescription?: string;
+  fullDescription?: string;
+}
+
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddProduct: (product: any) => void;
+  editProduct?: Product;
 }
 
-const AddProductModal = ({ isOpen, onClose, onAddProduct }: AddProductModalProps) => {
+const AddProductModal = ({ isOpen, onClose, onAddProduct, editProduct }: AddProductModalProps) => {
   const [mainImage, setMainImage] = useState<File | null>(null);
   
   const form = useForm<FormValues>({
@@ -66,18 +95,54 @@ const AddProductModal = ({ isOpen, onClose, onAddProduct }: AddProductModalProps
     }
   });
 
+  // Update form when editProduct changes
+  useEffect(() => {
+    if (editProduct) {
+      form.reset({
+        name: editProduct.name || '',
+        brand: editProduct.brand || '',
+        category: editProduct.category || '',
+        price: editProduct.price || '',
+        stock: editProduct.stock || 0,
+        status: editProduct.status || 'Ativo',
+        processor: editProduct.processor || '',
+        memory: editProduct.memory || '',
+        storage: editProduct.storage || '',
+        graphics: editProduct.graphics || '',
+        display: editProduct.display || editProduct.screenSize || '',
+        battery: editProduct.battery || '',
+        os: editProduct.os || editProduct.operatingSystem || '',
+        weight: editProduct.weight || '',
+        dimensions: editProduct.dimensions || '',
+        colors: editProduct.colors || '',
+        warranty: editProduct.warranty || '',
+        shortDescription: editProduct.shortDescription || '',
+        fullDescription: editProduct.fullDescription || ''
+      });
+    }
+  }, [editProduct, form]);
+
   const onSubmit = (values: FormValues) => {
-    onAddProduct({
+    const productData = {
       ...values,
-      image: mainImage ? URL.createObjectURL(mainImage) : '/placeholder.svg'
-    });
+      image: mainImage ? URL.createObjectURL(mainImage) : (editProduct?.image || '/placeholder.svg')
+    };
+    
+    // If we're editing, preserve the ID
+    if (editProduct) {
+      productData.id = editProduct.id;
+    }
+    
+    onAddProduct(productData);
   };
+
+  const modalTitle = editProduct ? 'Editar Produto' : 'Novo Produto';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Novo Produto</DialogTitle>
+          <DialogTitle className="text-xl font-bold">{modalTitle}</DialogTitle>
           <Button
             className="absolute right-4 top-4 h-8 w-8 p-0"
             variant="ghost"
