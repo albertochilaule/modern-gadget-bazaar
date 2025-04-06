@@ -123,7 +123,8 @@ const AddProductModal = ({ isOpen, onClose, onAddProduct, editProduct }: AddProd
   }, [editProduct, form]);
 
   const onSubmit = (values: FormValues) => {
-    const productData = {
+    // Define the product data with proper typing that includes the optional id field
+    const productData: Partial<Product> = {
       ...values,
       image: mainImage ? URL.createObjectURL(mainImage) : (editProduct?.image || '/placeholder.svg')
     };
