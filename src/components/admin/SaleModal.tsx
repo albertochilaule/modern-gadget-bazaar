@@ -59,7 +59,7 @@ const SaleModal = ({ isOpen, onClose, onSale, products }: SaleModalProps) => {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Venda Online</DialogTitle>
+          <DialogTitle className="text-xl font-bold">Venda Offline</DialogTitle>
           <Button
             className="absolute right-4 top-4 h-8 w-8 p-0"
             variant="ghost"
@@ -124,7 +124,7 @@ const SaleModal = ({ isOpen, onClose, onSale, products }: SaleModalProps) => {
                       <option value="">Selecione um produto</option>
                       {products.map((product) => (
                         <option key={product.id} value={product.id}>
-                          {product.name} - {product.price}
+                          {product.name} - {product.price} - Estoque: {product.stock}
                         </option>
                       ))}
                     </select>
