@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,7 @@ const formSchema = z.object({
   brand: z.string().min(1, { message: 'Marca é obrigatória' }),
   category: z.string().min(1, { message: 'Categoria é obrigatória' }),
   price: z.string().min(1, { message: 'Preço é obrigatório' }),
-  stock: z.string().transform(val => Number(val) || 0),
+  stock: z.coerce.number().min(0),
   status: z.enum(['Ativo', 'Inativo', 'Estoque Baixo']),
   processor: z.string().optional(),
   memory: z.string().optional(),
@@ -49,7 +48,7 @@ const AddProductModal = ({ isOpen, onClose, onAddProduct }: AddProductModalProps
       brand: '',
       category: '',
       price: '',
-      stock: '0',
+      stock: 0,
       status: 'Ativo',
       processor: '',
       memory: '',
@@ -321,7 +320,14 @@ const AddProductModal = ({ isOpen, onClose, onAddProduct }: AddProductModalProps
                   <FormItem>
                     <FormLabel>Quantidade em Estoque</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input 
+                        type="number" 
+                        {...field} 
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          field.onChange(value);
+                        }}
+                      />
                     </FormControl>
                   </FormItem>
                 )}

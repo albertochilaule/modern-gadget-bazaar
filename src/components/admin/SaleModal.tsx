@@ -14,7 +14,7 @@ const formSchema = z.object({
   contact: z.string().min(5, { message: 'Contato deve ter pelo menos 5 caracteres' }),
   documentId: z.string().min(5, { message: 'Número de BI/documento é obrigatório' }),
   productId: z.string().min(1, { message: 'Selecione um produto' }),
-  quantity: z.string().transform(val => Number(val) || 1),
+  quantity: z.coerce.number().min(1, { message: 'Quantidade mínima é 1' }),
   notes: z.string().optional()
 });
 
@@ -41,7 +41,7 @@ const SaleModal = ({ isOpen, onClose, onSale, products }: SaleModalProps) => {
       contact: '',
       documentId: '',
       productId: '',
-      quantity: '1',
+      quantity: 1,
       notes: ''
     }
   });
@@ -140,7 +140,15 @@ const SaleModal = ({ isOpen, onClose, onSale, products }: SaleModalProps) => {
                 <FormItem>
                   <FormLabel>Quantidade</FormLabel>
                   <FormControl>
-                    <Input type="number" min="1" {...field} />
+                    <Input 
+                      type="number" 
+                      min="1" 
+                      {...field}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 1;
+                        field.onChange(value);
+                      }}
+                    />
                   </FormControl>
                 </FormItem>
               )}
