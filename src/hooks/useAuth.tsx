@@ -6,6 +6,7 @@ type User = {
   id: string;
   name: string;
   email: string;
+  role: "user" | "admin";
 };
 
 type AuthContextType = {
@@ -14,6 +15,7 @@ type AuthContextType = {
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  isAdmin: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +30,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+    
+    // Adicionar um usuário admin no localStorage se ele não existir
+    const users = JSON.parse(localStorage.getItem("users") || "[]");
+    const adminExists = users.some((u: any) => u.email === "admin@centurytech.com");
+    
+    if (!adminExists) {
+      users.push({
+        id: "admin-1",
+        name: "Admin",
+        email: "admin@centurytech.com",
+        password: "admin123",
+        role: "admin"
+      });
+      localStorage.setItem("users", JSON.stringify(users));
+    }
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -39,7 +56,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userData = {
         id: foundUser.id,
         name: foundUser.name,
-        email: foundUser.email
+        email: foundUser.email,
+        role: foundUser.role || "user"
       };
       
       setUser(userData);
@@ -77,7 +95,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       id: `user-${Date.now()}`,
       name,
       email,
-      password
+      password,
+      role: "user"
     };
     
     // Adicionar à "base de dados" (localStorage)
@@ -88,7 +107,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const userData = {
       id: newUser.id,
       name: newUser.name,
-      email: newUser.email
+      email: newUser.email,
+      role: newUser.role
     };
     
     setUser(userData);
@@ -112,7 +132,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      register, 
+      logout, 
+      isAuthenticated: !!user,
+      isAdmin: !!user && user.role === "admin" 
+    }}>
       {children}
     </AuthContext.Provider>
   );
