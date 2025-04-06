@@ -53,11 +53,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const foundUser = users.find((u: any) => u.email === email && u.password === password);
     
     if (foundUser) {
-      const userData = {
+      const userRole = foundUser.role === "admin" ? "admin" : "user";
+      
+      const userData: User = {
         id: foundUser.id,
         name: foundUser.name,
         email: foundUser.email,
-        role: foundUser.role || "user"
+        role: userRole
       };
       
       setUser(userData);
@@ -96,7 +98,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       name,
       email,
       password,
-      role: "user"
+      role: "user" as const // Explicitamente tipado como "user"
     };
     
     // Adicionar à "base de dados" (localStorage)
@@ -104,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("users", JSON.stringify(users));
     
     // Login automático após cadastro
-    const userData = {
+    const userData: User = {
       id: newUser.id,
       name: newUser.name,
       email: newUser.email,
