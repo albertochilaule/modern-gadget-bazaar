@@ -147,10 +147,10 @@ const Index = () => {
     setFilteredProducts(loadedProducts);
     
     // Extract unique categories and brands
-    const uniqueCategories = [...new Set(loadedProducts.map((product: Product) => product.category || ''))].filter(Boolean);
+    const uniqueCategories: string[] = [...new Set(loadedProducts.map((product: Product) => product.category || ''))].filter(Boolean) as string[];
     setCategories(uniqueCategories);
     
-    const uniqueBrands = [...new Set(loadedProducts.map((product: Product) => product.brand))];
+    const uniqueBrands: string[] = [...new Set(loadedProducts.map((product: Product) => product.brand))];
     setBrands(uniqueBrands);
     
     // Find the maximum price for the price slider
