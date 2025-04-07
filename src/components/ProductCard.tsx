@@ -7,12 +7,13 @@ import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
 
 export interface Product {
-  id: number;
+  id: number | string;
   name: string;
   brand: string;
-  price: number;
+  price: number | string;
   stock: number;
   image: string;
+  isPublished?: boolean;
 }
 
 interface ProductCardProps {
@@ -32,6 +33,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
     });
   };
 
+  // Helper to convert price to number if it's a string
+  const displayPrice = typeof product.price === 'string' 
+    ? parseInt(product.price.replace(/\D/g, '')) 
+    : product.price;
+
   return (
     <Card className="h-full hover:shadow-lg transition-shadow">
       <img 
@@ -42,7 +48,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
       <CardContent className="p-4">
         <h5 className="font-bold text-lg">{product.name}</h5>
         <p className="text-century-muted mb-1">{product.brand}</p>
-        <p className="font-bold text-lg mb-1">MZN {product.price.toLocaleString()}</p>
+        <p className="font-bold text-lg mb-1">
+          MZN {typeof displayPrice === 'number' ? displayPrice.toLocaleString() : displayPrice}
+        </p>
         <p className="text-century-primary mb-3">Stock Disponível: {product.stock}</p>
         
         <div className="flex justify-between mt-3">

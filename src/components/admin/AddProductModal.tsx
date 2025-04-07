@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
+import { Switch } from '@/components/ui/switch';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,6 +16,7 @@ const formSchema = z.object({
   price: z.string().min(1, { message: 'Preço é obrigatório' }),
   stock: z.coerce.number().min(0),
   status: z.enum(['Ativo', 'Inativo', 'Estoque Baixo']),
+  isPublished: z.boolean().default(true),
   processor: z.string().optional(),
   memory: z.string().optional(),
   storage: z.string().optional(),
@@ -41,6 +42,7 @@ interface Product {
   price: string;
   stock: number;
   status: 'Ativo' | 'Inativo' | 'Estoque Baixo';
+  isPublished: boolean;
   image?: string;
   processor?: string;
   memory?: string;
@@ -79,6 +81,7 @@ const AddProductModal = ({ isOpen, onClose, onAddProduct, editProduct }: AddProd
       price: '',
       stock: 0,
       status: 'Ativo',
+      isPublished: true,
       processor: '',
       memory: '',
       storage: '',
@@ -105,6 +108,7 @@ const AddProductModal = ({ isOpen, onClose, onAddProduct, editProduct }: AddProd
         price: editProduct.price || '',
         stock: editProduct.stock || 0,
         status: editProduct.status || 'Ativo',
+        isPublished: editProduct.isPublished !== undefined ? editProduct.isPublished : true,
         processor: editProduct.processor || '',
         memory: editProduct.memory || '',
         storage: editProduct.storage || '',
@@ -378,51 +382,71 @@ const AddProductModal = ({ isOpen, onClose, onAddProduct, editProduct }: AddProd
 
             <h3 className="text-lg font-semibold pt-4 border-t">Estoque e Status</h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="stock"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantidade em Estoque</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        {...field} 
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
-                          field.onChange(value);
-                        }}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <FormControl>
-                      <select
-                        className="w-full h-10 pl-3 pr-10 border rounded-md"
-                        {...field}
-                      >
-                        <option value="Ativo">Ativo</option>
-                        <option value="Inativo">Inativo</option>
-                        <option value="Estoque Baixo">Estoque Baixo</option>
-                      </select>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <div>
-                <FormLabel className="block mb-2">Destaque</FormLabel>
-                <select className="w-full h-10 pl-3 pr-10 border rounded-md">
-                  <option value="Não">Não</option>
-                  <option value="Sim">Sim</option>
-                </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="stock"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Quantidade em Estoque</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value) || 0;
+                              field.onChange(value);
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <FormControl>
+                          <select
+                            className="w-full h-10 pl-3 pr-10 border rounded-md"
+                            {...field}
+                          >
+                            <option value="Ativo">Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                            <option value="Estoque Baixo">Estoque Baixo</option>
+                          </select>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex flex-col md:col-span-1">
+                <FormField
+                  control={form.control}
+                  name="isPublished"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Visibilidade</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          {field.value ? "Produto visível para o público" : "Produto oculto para o público"}
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
 

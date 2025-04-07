@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, ShoppingCart, Edit, Trash2, Filter, Search } from 'lucide-react';
+import { Plus, ShoppingCart, Edit, Trash2, Filter, Search, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AddProductModal from '@/components/admin/AddProductModal';
 import SaleModal from '@/components/admin/SaleModal';
@@ -16,6 +16,7 @@ interface Product {
   price: string;
   stock: number;
   status: 'Ativo' | 'Inativo' | 'Estoque Baixo';
+  isPublished: boolean;
   image?: string;
   processor?: string;
   memory?: string;
@@ -37,19 +38,37 @@ const AdminProducts = () => {
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
-  const [products, setProducts] = useState<Product[]>([
-    { id: '#001', name: 'Dell XPS 15', brand: 'Dell', category: 'Laptops', price: 'R$ 4.999,00', stock: 15, status: 'Ativo', image: '/placeholder.svg', processor: 'Intel i7', memory: '16GB', storage: '512GB SSD', screenSize: '15.6"', operatingSystem: 'Windows 11' },
-    { id: '#002', name: 'MacBook Pro M1', brand: 'Apple', category: 'Laptops', price: 'R$ 8.999,00', stock: 8, status: 'Ativo', image: '/placeholder.svg', processor: 'Apple M1', memory: '8GB', storage: '256GB SSD', screenSize: '13.3"', operatingSystem: 'macOS' },
-    { id: '#003', name: 'Lenovo ThinkPad X1', brand: 'Lenovo', category: 'Laptops', price: 'R$ 6.999,00', stock: 3, status: 'Estoque Baixo', image: '/placeholder.svg', processor: 'Intel i5', memory: '8GB', storage: '256GB SSD', screenSize: '14"', operatingSystem: 'Windows 10' },
-    { id: '#004', name: 'HP Spectre', brand: 'HP', category: 'Laptops', price: 'R$ 7.899,00', stock: 0, status: 'Inativo', image: '/placeholder.svg', processor: 'Intel i7', memory: '16GB', storage: '1TB SSD', screenSize: '13.5"', operatingSystem: 'Windows 11' },
-    { id: '#005', name: 'Samsung Galaxy S21', brand: 'Samsung', category: 'Smartphones', price: 'R$ 3.999,00', stock: 12, status: 'Ativo', image: '/placeholder.svg', processor: 'Exynos 2100', memory: '8GB', storage: '128GB', screenSize: '6.2"', operatingSystem: 'Android 11' },
-    { id: '#006', name: 'iPhone 13', brand: 'Apple', category: 'Smartphones', price: 'R$ 5.999,00', stock: 7, status: 'Ativo', image: '/placeholder.svg', processor: 'A15 Bionic', memory: '4GB', storage: '128GB', screenSize: '6.1"', operatingSystem: 'iOS 15' },
-  ]);
+  
+  // Retrieve products from localStorage or use default data
+  const getStoredProducts = (): Product[] => {
+    const stored = localStorage.getItem('adminProducts');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    
+    // Default products with isPublished field
+    return [
+      { id: '#001', name: 'Dell XPS 15', brand: 'Dell', category: 'Laptops', price: 'R$ 4.999,00', stock: 15, status: 'Ativo', isPublished: true, image: '/placeholder.svg', processor: 'Intel i7', memory: '16GB', storage: '512GB SSD', screenSize: '15.6"', operatingSystem: 'Windows 11' },
+      { id: '#002', name: 'MacBook Pro M1', brand: 'Apple', category: 'Laptops', price: 'R$ 8.999,00', stock: 8, status: 'Ativo', isPublished: true, image: '/placeholder.svg', processor: 'Apple M1', memory: '8GB', storage: '256GB SSD', screenSize: '13.3"', operatingSystem: 'macOS' },
+      { id: '#003', name: 'Lenovo ThinkPad X1', brand: 'Lenovo', category: 'Laptops', price: 'R$ 6.999,00', stock: 3, status: 'Estoque Baixo', isPublished: true, image: '/placeholder.svg', processor: 'Intel i5', memory: '8GB', storage: '256GB SSD', screenSize: '14"', operatingSystem: 'Windows 10' },
+      { id: '#004', name: 'HP Spectre', brand: 'HP', category: 'Laptops', price: 'R$ 7.899,00', stock: 0, status: 'Inativo', isPublished: false, image: '/placeholder.svg', processor: 'Intel i7', memory: '16GB', storage: '1TB SSD', screenSize: '13.5"', operatingSystem: 'Windows 11' },
+      { id: '#005', name: 'Samsung Galaxy S21', brand: 'Samsung', category: 'Smartphones', price: 'R$ 3.999,00', stock: 12, status: 'Ativo', isPublished: true, image: '/placeholder.svg', processor: 'Exynos 2100', memory: '8GB', storage: '128GB', screenSize: '6.2"', operatingSystem: 'Android 11' },
+      { id: '#006', name: 'iPhone 13', brand: 'Apple', category: 'Smartphones', price: 'R$ 5.999,00', stock: 7, status: 'Ativo', isPublished: true, image: '/placeholder.svg', processor: 'A15 Bionic', memory: '4GB', storage: '128GB', screenSize: '6.1"', operatingSystem: 'iOS 15' },
+    ];
+  };
+  
+  const [products, setProducts] = useState<Product[]>(getStoredProducts());
+  
+  // Save products to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('adminProducts', JSON.stringify(products));
+  }, [products]);
   
   // Filter states
   const [categoryFilter, setCategoryFilter] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [visibilityFilter, setVisibilityFilter] = useState('');
   
   // Extract unique categories and brands for filters
   const categories = [...new Set(products.map(product => product.category))];
@@ -65,9 +84,21 @@ const AdminProducts = () => {
     }
   };
 
+  const handleToggleVisibility = (product: Product) => {
+    const updatedProducts = products.map(p => 
+      p.id === product.id ? { ...p, isPublished: !p.isPublished } : p
+    );
+    setProducts(updatedProducts);
+    toast({
+      title: product.isPublished ? "Produto ocultado" : "Produto publicado",
+      description: `O produto foi ${product.isPublished ? 'ocultado do' : 'publicado para o'} público com sucesso.`,
+      variant: "success"
+    });
+  };
+
   const handleAddProduct = (product: Omit<Product, 'id'>) => {
     const newId = `#${String(products.length + 1).padStart(3, '0')}`;
-    setProducts([...products, { ...product, id: newId }]);
+    setProducts([...products, { ...product, id: newId, isPublished: product.isPublished !== undefined ? product.isPublished : true }]);
     setIsAddModalOpen(false);
     toast({
       title: "Produto adicionado",
@@ -146,6 +177,14 @@ const AdminProducts = () => {
       filtered = filtered.filter(product => product.status === statusFilter);
     }
     
+    // Apply visibility filter
+    if (visibilityFilter) {
+      filtered = filtered.filter(product => 
+        (visibilityFilter === 'published' && product.isPublished) || 
+        (visibilityFilter === 'hidden' && !product.isPublished)
+      );
+    }
+    
     return filtered;
   };
   
@@ -154,6 +193,7 @@ const AdminProducts = () => {
     setCategoryFilter('');
     setBrandFilter('');
     setStatusFilter('');
+    setVisibilityFilter('');
   };
 
   const filteredProducts = applyFilters();
@@ -175,7 +215,7 @@ const AdminProducts = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="col-span-1 md:col-span-2">
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
@@ -211,7 +251,7 @@ const AdminProducts = () => {
             ))}
           </select>
         </div>
-        <div>
+        <div className="grid grid-cols-2 gap-2">
           <select 
             className="w-full h-10 pl-3 pr-10 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
             value={statusFilter}
@@ -222,8 +262,18 @@ const AdminProducts = () => {
             <option value="Inativo">Inativo</option>
             <option value="Estoque Baixo">Estoque Baixo</option>
           </select>
+          
+          <select 
+            className="w-full h-10 pl-3 pr-10 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
+            value={visibilityFilter}
+            onChange={(e) => setVisibilityFilter(e.target.value)}
+          >
+            <option value="">Toda Visibilidade</option>
+            <option value="published">Publicado</option>
+            <option value="hidden">Oculto</option>
+          </select>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 md:col-span-5">
           <Button 
             className="w-full bg-gray-600 hover:bg-gray-700"
             onClick={handleResetFilters}
@@ -247,6 +297,7 @@ const AdminProducts = () => {
                   <th className="text-left p-4">Preço</th>
                   <th className="text-left p-4">Estoque</th>
                   <th className="text-left p-4">Status</th>
+                  <th className="text-left p-4">Visibilidade</th>
                   <th className="text-right p-4">Ações</th>
                 </tr>
               </thead>
@@ -270,6 +321,24 @@ const AdminProducts = () => {
                           {product.status}
                         </span>
                       </td>
+                      <td className="p-4">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className={`flex items-center ${product.isPublished ? 'text-green-600' : 'text-gray-500'}`}
+                          onClick={() => handleToggleVisibility(product)}
+                        >
+                          {product.isPublished ? (
+                            <>
+                              <Eye className="h-4 w-4 mr-1" /> Publicado
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="h-4 w-4 mr-1" /> Oculto
+                            </>
+                          )}
+                        </Button>
+                      </td>
                       <td className="p-4 text-right space-x-2">
                         <Button 
                           variant="outline" 
@@ -291,7 +360,7 @@ const AdminProducts = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={9} className="p-4 text-center text-gray-500">
+                    <td colSpan={10} className="p-4 text-center text-gray-500">
                       Nenhum produto encontrado
                     </td>
                   </tr>
