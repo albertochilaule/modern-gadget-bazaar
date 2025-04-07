@@ -25,7 +25,15 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const { toast } = useToast();
 
   const handleAddToCart = () => {
-    addToCart(product);
+    // For consistency, ensure product has a numeric price before adding to cart
+    const productWithNumericPrice = {
+      ...product,
+      price: typeof product.price === 'string' 
+        ? parseFloat(product.price.replace(/[^\d.-]/g, ''))
+        : product.price
+    };
+    
+    addToCart(productWithNumericPrice);
     toast({
       title: "Produto adicionado!",
       description: `${product.name} foi adicionado ao carrinho.`,
@@ -35,7 +43,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
   // Helper to convert price to number if it's a string
   const displayPrice = typeof product.price === 'string' 
-    ? parseInt(product.price.replace(/\D/g, '')) 
+    ? parseFloat(product.price.replace(/[^\d.-]/g, '')) 
     : product.price;
 
   return (

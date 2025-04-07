@@ -9,6 +9,14 @@ import { ArrowLeft, ShoppingBag, Trash2 } from "lucide-react";
 const Cart = () => {
   const { cartItems, removeFromCart, getTotalPrice, clearCart } = useCart();
   
+  // Helper function to format prices consistently
+  const formatPrice = (price: string | number): string => {
+    const numericPrice = typeof price === 'string' 
+      ? parseFloat(price.replace(/[^\d.-]/g, ''))
+      : price;
+    return numericPrice.toLocaleString();
+  };
+  
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -51,7 +59,7 @@ const Cart = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          MZN {item.price.toLocaleString()}
+                          MZN {formatPrice(item.price)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                           <Button 

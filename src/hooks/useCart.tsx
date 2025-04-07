@@ -5,7 +5,7 @@ import { Product } from '@/components/ProductCard';
 interface CartContextType {
   cartItems: Product[];
   addToCart: (product: Product) => void;
-  removeFromCart: (productId: number) => void;
+  removeFromCart: (productId: number | string) => void;
   clearCart: () => void;
   getTotalPrice: () => number;
 }
@@ -28,7 +28,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCartItems(prev => [...prev, product]);
   };
 
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = (productId: number | string) => {
     setCartItems(prev => prev.filter(item => item.id !== productId));
   };
 
@@ -37,7 +37,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const getTotalPrice = () => {
-    return cartItems.reduce((total, item) => total + item.price, 0);
+    return cartItems.reduce((total, item) => {
+      // Convert price to number if it's a string
+      const itemPrice = typeof item.price === 'string' 
+        ? parseFloat(item.price.replace(/[^\d.-]/g, '')) 
+        : item.price;
+      return total + itemPrice;
+    }, 0);
   };
 
   return (

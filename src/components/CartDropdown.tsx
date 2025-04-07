@@ -8,6 +8,14 @@ import { Trash2 } from 'lucide-react';
 const CartDropdown = () => {
   const { cartItems, removeFromCart, getTotalPrice } = useCart();
 
+  // Helper function to format prices consistently
+  const formatPrice = (price: string | number): string => {
+    const numericPrice = typeof price === 'string' 
+      ? parseFloat(price.replace(/[^\d.-]/g, ''))
+      : price;
+    return numericPrice.toLocaleString();
+  };
+
   return (
     <div className="absolute top-10 right-0 z-50 bg-white text-black rounded-md shadow-lg w-72 border border-gray-200">
       <div className="p-3 border-b border-gray-200">
@@ -30,7 +38,7 @@ const CartDropdown = () => {
                 />
                 <div className="flex-1">
                   <p className="font-medium text-sm">{item.name}</p>
-                  <p className="text-sm text-century-muted">MZN {item.price.toLocaleString()}</p>
+                  <p className="text-sm text-century-muted">MZN {formatPrice(item.price)}</p>
                 </div>
                 <Button 
                   variant="ghost" 
