@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -146,14 +145,13 @@ const Index = () => {
     setProducts(loadedProducts);
     setFilteredProducts(loadedProducts);
     
-    // Extract unique categories and brands
-    const uniqueCategories: string[] = [...new Set(loadedProducts.map((product: Product) => product.category || ''))].filter(Boolean) as string[];
+    const uniqueCategories = Array.from(new Set(loadedProducts.map(product => product.category || '')
+      .filter(Boolean))) as string[];
     setCategories(uniqueCategories);
     
-    const uniqueBrands: string[] = [...new Set(loadedProducts.map((product: Product) => product.brand))];
+    const uniqueBrands = Array.from(new Set(loadedProducts.map(product => product.brand))) as string[];
     setBrands(uniqueBrands);
     
-    // Find the maximum price for the price slider
     const highestPrice = Math.max(...loadedProducts.map((product: Product) => {
       const numPrice = typeof product.price === 'string' 
         ? parseFloat(product.price.replace(/[^\d.-]/g, '')) 
@@ -172,7 +170,6 @@ const Index = () => {
   ) => {
     let result = [...productsToFilter];
     
-    // Apply search query
     if (query.trim() !== '') {
       const searchLower = query.toLowerCase();
       result = result.filter(product => 
@@ -182,7 +179,6 @@ const Index = () => {
       );
     }
     
-    // Apply price range filter
     if (priceRange) {
       result = result.filter(product => {
         const numPrice = typeof product.price === 'string' 
@@ -192,12 +188,10 @@ const Index = () => {
       });
     }
     
-    // Apply brand filter
     if (selectedBrands && selectedBrands.length > 0) {
       result = result.filter(product => selectedBrands.includes(product.brand));
     }
     
-    // Apply category filter
     if (selectedCategories && selectedCategories.length > 0) {
       result = result.filter(product => 
         product.category && selectedCategories.includes(product.category)
@@ -254,7 +248,6 @@ const Index = () => {
           </form>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {/* Filters sidebar */}
             <div className="md:col-span-1">
               <FilterSection 
                 brands={brands}
@@ -264,7 +257,6 @@ const Index = () => {
               />
             </div>
             
-            {/* Products grid */}
             <div className="md:col-span-3">
               <ProductsSection 
                 products={filteredProducts} 
