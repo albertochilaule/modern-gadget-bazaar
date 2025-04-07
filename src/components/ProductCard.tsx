@@ -14,6 +14,8 @@ export interface Product {
   stock: number;
   image: string;
   isPublished?: boolean;
+  category?: string;
+  description?: string;
 }
 
 interface ProductCardProps {
@@ -56,6 +58,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
       <CardContent className="p-4">
         <h5 className="font-bold text-lg">{product.name}</h5>
         <p className="text-century-muted mb-1">{product.brand}</p>
+        {product.category && (
+          <p className="text-sm text-gray-500 mb-1">{product.category}</p>
+        )}
         <p className="font-bold text-lg mb-1">
           MZN {typeof displayPrice === 'number' ? displayPrice.toLocaleString() : displayPrice}
         </p>
@@ -70,8 +75,10 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <Button 
             className="bg-century-primary hover:bg-green-600 text-white flex items-center"
             onClick={handleAddToCart}
+            disabled={product.stock <= 0}
           >
-            <ShoppingCart className="h-4 w-4 mr-1" /> Comprar
+            <ShoppingCart className="h-4 w-4 mr-1" /> 
+            {product.stock > 0 ? 'Comprar' : 'Sem Stock'}
           </Button>
         </div>
       </CardContent>

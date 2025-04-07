@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -5,6 +6,7 @@ import HeroSection from "@/components/HeroSection";
 import HighlightsSection from "@/components/HighlightsSection";
 import CategoriesSection from "@/components/CategoriesSection";
 import ProductsSection from "@/components/ProductsSection";
+import FilterSection from "@/components/FilterSection";
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
@@ -14,6 +16,9 @@ const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [brands, setBrands] = useState<string[]>([]);
+  const [maxPrice, setMaxPrice] = useState<number>(100000);
 
   useEffect(() => {
     const getStoredProducts = () => {
@@ -29,10 +34,11 @@ const Index = () => {
               name: product.name,
               brand: product.brand,
               price: typeof product.price === 'string' 
-                ? parseInt(product.price.replace(/\D/g, '')) 
+                ? parseFloat(product.price.replace(/[^\d.-]/g, '')) 
                 : product.price,
               stock: product.stock,
-              image: product.image || '/placeholder.svg'
+              image: product.image || '/placeholder.svg',
+              category: product.category
             }));
           
           return formattedProducts;
@@ -49,7 +55,8 @@ const Index = () => {
           brand: "HP",
           price: 15000,
           stock: 5,
-          image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=300&fit=crop"
+          image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=300&fit=crop",
+          category: "Laptops"
         },
         {
           id: 2,
@@ -57,7 +64,8 @@ const Index = () => {
           brand: "Acer",
           price: 35000,
           stock: 3,
-          image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=300&fit=crop"
+          image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=300&fit=crop",
+          category: "Laptops"
         },
         {
           id: 3,
@@ -65,7 +73,8 @@ const Index = () => {
           brand: "Dell",
           price: 45000,
           stock: 2,
-          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop"
+          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop",
+          category: "Laptops"
         },
         {
           id: 4,
@@ -73,7 +82,8 @@ const Index = () => {
           brand: "Lenovo",
           price: 25000,
           stock: 4,
-          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop"
+          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop",
+          category: "Laptops"
         },
         {
           id: 5,
@@ -81,7 +91,8 @@ const Index = () => {
           brand: "Apple",
           price: 85000,
           stock: 2,
-          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop"
+          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop",
+          category: "Laptops"
         },
         {
           id: 6,
@@ -89,7 +100,8 @@ const Index = () => {
           brand: "ASUS",
           price: 65000,
           stock: 3,
-          image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=300&fit=crop"
+          image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=300&fit=crop",
+          category: "PC Gamers"
         },
         {
           id: 7,
@@ -97,7 +109,8 @@ const Index = () => {
           brand: "MSI",
           price: 75000,
           stock: 1,
-          image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=300&fit=crop"
+          image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=300&fit=crop",
+          category: "PC Gamers"
         },
         {
           id: 8,
@@ -105,7 +118,8 @@ const Index = () => {
           brand: "Razer",
           price: 95000,
           stock: 2,
-          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop"
+          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop",
+          category: "Laptops"
         },
         {
           id: 9,
@@ -113,7 +127,8 @@ const Index = () => {
           brand: "Dell",
           price: 105000,
           stock: 1,
-          image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=300&fit=crop"
+          image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=300&fit=crop",
+          category: "PC Gamers"
         },
         {
           id: 10,
@@ -121,7 +136,8 @@ const Index = () => {
           brand: "HP",
           price: 55000,
           stock: 4,
-          image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=300&fit=crop"
+          image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=300&fit=crop",
+          category: "PC Gamers"
         }
       ];
     };
@@ -129,23 +145,90 @@ const Index = () => {
     const loadedProducts = getStoredProducts();
     setProducts(loadedProducts);
     setFilteredProducts(loadedProducts);
+    
+    // Extract unique categories and brands
+    const uniqueCategories = [...new Set(loadedProducts.map((product: Product) => product.category || ''))].filter(Boolean);
+    setCategories(uniqueCategories);
+    
+    const uniqueBrands = [...new Set(loadedProducts.map((product: Product) => product.brand))];
+    setBrands(uniqueBrands);
+    
+    // Find the maximum price for the price slider
+    const highestPrice = Math.max(...loadedProducts.map((product: Product) => {
+      const numPrice = typeof product.price === 'string' 
+        ? parseFloat(product.price.replace(/[^\d.-]/g, '')) 
+        : product.price;
+      return numPrice;
+    }));
+    setMaxPrice(highestPrice);
   }, []);
 
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredProducts(products);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = products.filter(product => 
-        product.name.toLowerCase().includes(query) ||
-        product.brand.toLowerCase().includes(query)
+  const applyFilters = (
+    productsToFilter: Product[],
+    query: string,
+    priceRange?: [number, number],
+    selectedBrands?: string[],
+    selectedCategories?: string[]
+  ) => {
+    let result = [...productsToFilter];
+    
+    // Apply search query
+    if (query.trim() !== '') {
+      const searchLower = query.toLowerCase();
+      result = result.filter(product => 
+        product.name.toLowerCase().includes(searchLower) ||
+        product.brand.toLowerCase().includes(searchLower) ||
+        (product.category && product.category.toLowerCase().includes(searchLower))
       );
-      setFilteredProducts(filtered);
     }
+    
+    // Apply price range filter
+    if (priceRange) {
+      result = result.filter(product => {
+        const numPrice = typeof product.price === 'string' 
+          ? parseFloat(product.price.replace(/[^\d.-]/g, '')) 
+          : product.price;
+        return numPrice >= priceRange[0] && numPrice <= priceRange[1];
+      });
+    }
+    
+    // Apply brand filter
+    if (selectedBrands && selectedBrands.length > 0) {
+      result = result.filter(product => selectedBrands.includes(product.brand));
+    }
+    
+    // Apply category filter
+    if (selectedCategories && selectedCategories.length > 0) {
+      result = result.filter(product => 
+        product.category && selectedCategories.includes(product.category)
+      );
+    }
+    
+    return result;
+  };
+
+  useEffect(() => {
+    setFilteredProducts(applyFilters(products, searchQuery));
   }, [searchQuery, products]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setFilteredProducts(applyFilters(products, searchQuery));
+  };
+
+  const handleFilterChange = (filters: {
+    priceRange: [number, number];
+    selectedBrands: string[];
+    selectedCategories: string[];
+  }) => {
+    const filtered = applyFilters(
+      products, 
+      searchQuery, 
+      filters.priceRange, 
+      filters.selectedBrands, 
+      filters.selectedCategories
+    );
+    setFilteredProducts(filtered);
   };
 
   return (
@@ -170,10 +253,25 @@ const Index = () => {
             <Button type="submit">Buscar</Button>
           </form>
           
-          <ProductsSection 
-            products={filteredProducts} 
-            title={searchQuery ? `Resultados para "${searchQuery}"` : "Produtos em Destaque"} 
-          />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* Filters sidebar */}
+            <div className="md:col-span-1">
+              <FilterSection 
+                brands={brands}
+                categories={categories}
+                maxPrice={maxPrice}
+                onFilterChange={handleFilterChange}
+              />
+            </div>
+            
+            {/* Products grid */}
+            <div className="md:col-span-3">
+              <ProductsSection 
+                products={filteredProducts} 
+                title={searchQuery ? `Resultados para "${searchQuery}"` : "Produtos em Destaque"} 
+              />
+            </div>
+          </div>
         </div>
       </main>
       <Footer />
