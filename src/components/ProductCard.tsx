@@ -4,27 +4,7 @@ import { ShoppingCart } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useCart } from '@/hooks/useCart';
 import { useToast } from "@/hooks/use-toast";
-
-export interface Product {
-  id: string | number;
-  name: string;
-  brand: string;
-  price: number | string;
-  stock: number;
-  image: string;
-  category?: string;
-  description?: string;
-  processor?: string;
-  memory?: string;
-  storage?: string;
-  screenSize?: string;
-  screen_size?: string;
-  operatingSystem?: string;
-  operating_system?: string;
-  graphics?: string;
-  isPublished?: boolean;
-  is_published?: boolean;
-}
+import { Product } from '@/types/product';
 
 interface ProductCardProps {
   product: Product;

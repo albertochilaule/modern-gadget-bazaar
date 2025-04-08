@@ -1,7 +1,8 @@
 
 import React from 'react';
-import ProductCard, { Product } from '@/components/ProductCard';
+import ProductCard from '@/components/ProductCard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Product } from '@/types/product';
 
 export interface ProductsSectionProps {
   products: Product[];
