@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,14 +6,15 @@ import { Plus, ShoppingCart, Edit, Trash2, Filter, Search, Eye, EyeOff } from 'l
 import { useToast } from '@/hooks/use-toast';
 import AddProductModal from '@/components/admin/AddProductModal';
 import SaleModal from '@/components/admin/SaleModal';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/utils/supabaseClient';
+import { Product as ProductCardProduct } from '@/components/ProductCard';
 
 interface Product {
   id: string;
   name: string;
   brand: string;
   category: string;
-  price: number;  // Changed from string | number to number consistently
+  price: string | number;
   stock: number;
   status: 'Ativo' | 'Inativo' | 'Estoque Baixo';
   isPublished: boolean;
@@ -44,10 +44,8 @@ const AdminProducts = () => {
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // State for products
   const [products, setProducts] = useState<Product[]>([]);
   
-  // Fetch products from Supabase
   const fetchProducts = async () => {
     setIsLoading(true);
     try {
@@ -60,13 +58,12 @@ const AdminProducts = () => {
       }
       
       if (data) {
-        // Convert Supabase data to our Product interface
         const formattedProducts = data.map(product => ({
           id: product.id,
           name: product.name,
           brand: product.brand,
           category: product.category,
-          price: Number(product.price), // Ensure price is a number
+          price: product.price.toString(),
           stock: product.stock,
           status: determineStatus(product.stock),
           isPublished: product.is_published,
@@ -79,10 +76,8 @@ const AdminProducts = () => {
         }));
         
         setProducts(formattedProducts);
-        // Also save to localStorage for compatibility with other components
         localStorage.setItem('adminProducts', JSON.stringify(formattedProducts));
       } else {
-        // Fallback to localStorage if no Supabase data
         const stored = localStorage.getItem('adminProducts');
         if (stored) {
           setProducts(JSON.parse(stored));
@@ -96,7 +91,6 @@ const AdminProducts = () => {
         variant: 'destructive'
       });
       
-      // Fallback to localStorage if Supabase fails
       const stored = localStorage.getItem('adminProducts');
       if (stored) {
         setProducts(JSON.parse(stored));
@@ -106,25 +100,21 @@ const AdminProducts = () => {
     }
   };
   
-  // Helper function to determine status based on stock
   const determineStatus = (stock: number): 'Ativo' | 'Inativo' | 'Estoque Baixo' => {
     if (stock === 0) return 'Inativo';
     if (stock <= 3) return 'Estoque Baixo';
     return 'Ativo';
   };
   
-  // Initial data load
   useEffect(() => {
     fetchProducts();
   }, []);
   
-  // Filter states
   const [categoryFilter, setCategoryFilter] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState('');
   
-  // Extract unique categories and brands for filters
   const categories = [...new Set(products.map(product => product.category))];
   const brands = [...new Set(products.map(product => product.brand))];
 
@@ -138,9 +128,7 @@ const AdminProducts = () => {
           
         if (error) throw error;
         
-        // Update local state
         setProducts(products.filter(product => product.id !== id));
-        // Update localStorage
         localStorage.setItem('adminProducts', JSON.stringify(products.filter(product => product.id !== id)));
         
         toast({
@@ -169,12 +157,10 @@ const AdminProducts = () => {
         
       if (error) throw error;
       
-      // Update local state
       const updatedProducts = products.map(p => 
         p.id === product.id ? { ...p, isPublished: newIsPublished } : p
       );
       setProducts(updatedProducts);
-      // Update localStorage
       localStorage.setItem('adminProducts', JSON.stringify(updatedProducts));
       
       toast({
@@ -194,15 +180,13 @@ const AdminProducts = () => {
 
   const handleAddProduct = async (product: Omit<Product, 'id' | 'status'>) => {
     try {
-      // Determine status based on stock
       const status = determineStatus(product.stock);
       
-      // Prepare data for Supabase
       const supabaseData = {
         name: product.name,
         brand: product.brand,
         category: product.category,
-        price: Number(product.price), // Ensure price is a number
+        price: Number(product.price),
         stock: product.stock,
         is_published: product.is_published !== undefined ? product.is_published : true,
         image: product.image,
@@ -213,7 +197,6 @@ const AdminProducts = () => {
         operating_system: product.operatingSystem || product.operating_system
       };
       
-      // Insert into Supabase
       const { data, error } = await supabase
         .from('products')
         .insert(supabaseData)
@@ -226,13 +209,12 @@ const AdminProducts = () => {
         throw new Error('No data returned from insert operation');
       }
       
-      // Format the new product with the generated ID
       const newProduct: Product = {
         id: data.id,
         name: data.name,
         brand: data.brand,
         category: data.category,
-        price: Number(data.price),
+        price: data.price.toString(),
         stock: data.stock,
         status,
         isPublished: data.is_published,
@@ -244,9 +226,7 @@ const AdminProducts = () => {
         operatingSystem: data.operating_system
       };
       
-      // Update local state
       setProducts([...products, newProduct]);
-      // Update localStorage
       localStorage.setItem('adminProducts', JSON.stringify([...products, newProduct]));
       
       setIsAddModalOpen(false);
@@ -266,15 +246,13 @@ const AdminProducts = () => {
   
   const handleEditProduct = async (updatedProduct: Product) => {
     try {
-      // Determine status based on stock
       const status = determineStatus(updatedProduct.stock);
       
-      // Prepare data for Supabase
       const supabaseData = {
         name: updatedProduct.name,
         brand: updatedProduct.brand,
         category: updatedProduct.category,
-        price: Number(updatedProduct.price), // Ensure price is a number
+        price: Number(updatedProduct.price),
         stock: updatedProduct.stock,
         is_published: updatedProduct.isPublished,
         image: updatedProduct.image,
@@ -285,7 +263,6 @@ const AdminProducts = () => {
         operating_system: updatedProduct.operatingSystem || updatedProduct.operating_system
       };
       
-      // Update in Supabase
       const { error } = await supabase
         .from('products')
         .update(supabaseData)
@@ -293,7 +270,6 @@ const AdminProducts = () => {
         
       if (error) throw error;
       
-      // Update local state with status
       const productWithStatus = {
         ...updatedProduct,
         status
@@ -303,7 +279,6 @@ const AdminProducts = () => {
         product.id === updatedProduct.id ? productWithStatus : product
       ));
       
-      // Update localStorage
       localStorage.setItem('adminProducts', JSON.stringify(
         products.map(product => product.id === updatedProduct.id ? productWithStatus : product)
       ));
@@ -326,14 +301,11 @@ const AdminProducts = () => {
 
   const handleSale = async (saleData: any) => {
     try {
-      // Find the product being sold
       const productIndex = products.findIndex(p => p.id === saleData.productId);
       if (productIndex >= 0) {
-        // Calculate new stock level
         const newStock = Math.max(0, products[productIndex].stock - saleData.quantity);
         const newStatus = determineStatus(newStock);
         
-        // Update product stock in Supabase
         const { error: updateError } = await supabase
           .from('products')
           .update({ stock: newStock })
@@ -341,7 +313,6 @@ const AdminProducts = () => {
           
         if (updateError) throw updateError;
         
-        // Record the sale in the sales table
         const { error: saleError } = await supabase
           .from('sales')
           .insert({
@@ -354,7 +325,6 @@ const AdminProducts = () => {
           
         if (saleError) throw saleError;
         
-        // Update local state
         const updatedProducts = [...products];
         updatedProducts[productIndex] = {
           ...updatedProducts[productIndex],
@@ -364,7 +334,6 @@ const AdminProducts = () => {
         
         setProducts(updatedProducts);
         
-        // Update localStorage
         localStorage.setItem('adminProducts', JSON.stringify(updatedProducts));
         
         toast({
@@ -382,7 +351,7 @@ const AdminProducts = () => {
     }
     setIsSaleModalOpen(false);
   };
-  
+
   const openEditModal = (product: Product) => {
     setEditProduct(product);
     setIsEditModalOpen(true);
@@ -391,7 +360,6 @@ const AdminProducts = () => {
   const applyFilters = () => {
     let filtered = [...products];
     
-    // Apply search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(product => 
@@ -402,22 +370,18 @@ const AdminProducts = () => {
       );
     }
     
-    // Apply category filter
     if (categoryFilter) {
       filtered = filtered.filter(product => product.category === categoryFilter);
     }
     
-    // Apply brand filter
     if (brandFilter) {
       filtered = filtered.filter(product => product.brand === brandFilter);
     }
     
-    // Apply status filter
     if (statusFilter) {
       filtered = filtered.filter(product => product.status === statusFilter);
     }
     
-    // Apply visibility filter
     if (visibilityFilter) {
       filtered = filtered.filter(product => 
         (visibilityFilter === 'published' && product.isPublished) || 
@@ -634,7 +598,6 @@ const AdminProducts = () => {
         </div>
       </div>
 
-      {/* Add Product Modal */}
       {isAddModalOpen && (
         <AddProductModal 
           isOpen={isAddModalOpen} 
@@ -643,7 +606,6 @@ const AdminProducts = () => {
         />
       )}
 
-      {/* Edit Product Modal */}
       {isEditModalOpen && editProduct && (
         <AddProductModal 
           isOpen={isEditModalOpen} 
@@ -656,7 +618,6 @@ const AdminProducts = () => {
         />
       )}
 
-      {/* Sale Modal */}
       {isSaleModalOpen && (
         <SaleModal 
           isOpen={isSaleModalOpen} 

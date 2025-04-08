@@ -23,6 +23,8 @@ type FormValues = z.infer<typeof formSchema>;
 interface Product {
   id: string;
   name: string;
+  price: string | number; // Allow for both string and number types
+  stock: number;
   [key: string]: any;
 }
 
@@ -124,7 +126,9 @@ const SaleModal = ({ isOpen, onClose, onSale, products }: SaleModalProps) => {
                       <option value="">Selecione um produto</option>
                       {products.map((product) => (
                         <option key={product.id} value={product.id}>
-                          {product.name} - {product.price} - Estoque: {product.stock}
+                          {product.name} - {typeof product.price === 'number' 
+                            ? `R$ ${product.price.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`
+                            : product.price} - Estoque: {product.stock}
                         </option>
                       ))}
                     </select>
