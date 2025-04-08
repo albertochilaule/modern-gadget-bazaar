@@ -14,7 +14,7 @@ interface Product {
   name: string;
   brand: string;
   category: string;
-  price: string | number;
+  price: number;  // Changed from string | number to number consistently
   stock: number;
   status: 'Ativo' | 'Inativo' | 'Estoque Baixo';
   isPublished: boolean;
@@ -66,7 +66,7 @@ const AdminProducts = () => {
           name: product.name,
           brand: product.brand,
           category: product.category,
-          price: product.price,
+          price: Number(product.price), // Ensure price is a number
           stock: product.stock,
           status: determineStatus(product.stock),
           isPublished: product.is_published,
@@ -202,7 +202,7 @@ const AdminProducts = () => {
         name: product.name,
         brand: product.brand,
         category: product.category,
-        price: product.price,
+        price: Number(product.price), // Ensure price is a number
         stock: product.stock,
         is_published: product.is_published !== undefined ? product.is_published : true,
         image: product.image,
@@ -222,13 +222,17 @@ const AdminProducts = () => {
         
       if (error) throw error;
       
+      if (!data) {
+        throw new Error('No data returned from insert operation');
+      }
+      
       // Format the new product with the generated ID
       const newProduct: Product = {
         id: data.id,
         name: data.name,
         brand: data.brand,
         category: data.category,
-        price: data.price,
+        price: Number(data.price),
         stock: data.stock,
         status,
         isPublished: data.is_published,
@@ -270,7 +274,7 @@ const AdminProducts = () => {
         name: updatedProduct.name,
         brand: updatedProduct.brand,
         category: updatedProduct.category,
-        price: updatedProduct.price,
+        price: Number(updatedProduct.price), // Ensure price is a number
         stock: updatedProduct.stock,
         is_published: updatedProduct.isPublished,
         image: updatedProduct.image,
@@ -344,7 +348,7 @@ const AdminProducts = () => {
             product_id: saleData.productId,
             customer_name: saleData.customerName,
             quantity: saleData.quantity,
-            total_price: saleData.totalPrice || products[productIndex].price * saleData.quantity,
+            total_price: saleData.totalPrice || Number(products[productIndex].price) * saleData.quantity,
             created_by: (await supabase.auth.getUser()).data.user?.id
           });
           

@@ -9,7 +9,7 @@ export const convertDbProductToProduct = (dbProduct: DbProduct): Product => {
     id: dbProduct.id,
     name: dbProduct.name,
     brand: dbProduct.brand,
-    price: dbProduct.price,
+    price: dbProduct.price.toString(), // Convert to string to match Product interface
     stock: dbProduct.stock,
     image: dbProduct.image || '/placeholder.svg',
     category: dbProduct.category,
@@ -91,7 +91,7 @@ export const createProduct = async (product: Omit<Product, 'id'>): Promise<Produ
       name: product.name,
       brand: product.brand,
       category: product.category || '',
-      price: product.price,
+      price: Number(product.price), // Convert string price to number for database
       stock: product.stock,
       is_published: Boolean(product.isPublished),
       image: product.image,
@@ -134,7 +134,7 @@ export const updateProduct = async (id: string, product: Partial<Product>): Prom
     if (product.name) supabaseData.name = product.name;
     if (product.brand) supabaseData.brand = product.brand;
     if (product.category) supabaseData.category = product.category;
-    if (product.price !== undefined) supabaseData.price = product.price;
+    if (product.price !== undefined) supabaseData.price = Number(product.price); // Convert to number
     if (product.stock !== undefined) supabaseData.stock = product.stock;
     if (product.isPublished !== undefined) supabaseData.is_published = product.isPublished;
     if (product.image) supabaseData.image = product.image;

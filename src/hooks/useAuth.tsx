@@ -1,7 +1,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/utils/supabaseClient";
 import { Session } from "@supabase/supabase-js";
 import { ExtendedUser, Profile } from "@/types/supabase";
 
@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 .eq('id', currentSession.user.id);
             }
           })
-          .finally(() => {
+          .then(() => {
             setUser(extendedUser);
           });
       }
