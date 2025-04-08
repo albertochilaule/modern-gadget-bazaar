@@ -50,10 +50,31 @@ const SaleModal = ({ isOpen, onClose, onSale, products }: SaleModalProps) => {
 
   const onSubmit = (values: FormValues) => {
     const selectedProduct = products.find(p => p.id === values.productId);
+    
+    // Calculate total price
+    let totalPrice = 0;
+    if (selectedProduct) {
+      const productPrice = typeof selectedProduct.price === 'string' 
+        ? parseFloat(selectedProduct.price.replace(/[^\d.-]/g, ''))
+        : selectedProduct.price;
+      totalPrice = productPrice * values.quantity;
+    }
+    
     onSale({
       ...values,
       productName: selectedProduct?.name,
-      customerName: values.customerName
+      customerName: values.customerName,
+      totalPrice
+    });
+  };
+
+  const formatPrice = (price: string | number): string => {
+    const numericPrice = typeof price === 'string' 
+      ? parseFloat(price.replace(/[^\d.-]/g, ''))
+      : price;
+    return numericPrice.toLocaleString('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL' 
     });
   };
 
@@ -126,9 +147,7 @@ const SaleModal = ({ isOpen, onClose, onSale, products }: SaleModalProps) => {
                       <option value="">Selecione um produto</option>
                       {products.map((product) => (
                         <option key={product.id} value={product.id}>
-                          {product.name} - {typeof product.price === 'number' 
-                            ? `R$ ${product.price.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`
-                            : product.price} - Estoque: {product.stock}
+                          {product.name} - {formatPrice(product.price)} - Estoque: {product.stock}
                         </option>
                       ))}
                     </select>
