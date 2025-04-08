@@ -17,8 +17,8 @@ import { useState, useEffect } from 'react';
 import { Product } from '@/components/ProductCard';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from '@/lib/utils';
 import ProductCard from '@/components/ProductCard';
+import { supabase } from "@/integrations/supabase/client";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -30,51 +30,116 @@ const ProductDetail = () => {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   
   useEffect(() => {
-    const fetchProduct = () => {
+    const fetchProduct = async () => {
       setLoading(true);
+      
       try {
-        // Get products from localStorage
-        const storedProducts = localStorage.getItem('adminProducts');
-        if (storedProducts) {
-          const allProducts = JSON.parse(storedProducts);
-          // Find the product with matching ID
-          const foundProduct = allProducts.find((p: any) => p.id.toString() === id?.toString());
+        if (!id) return;
+        
+        // First try to fetch from Supabase by UUID
+        let { data: productData, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', id)
+          .single();
           
-          if (foundProduct) {
-            // Format the product to match our Product interface
-            const formattedProduct: Product = {
-              id: foundProduct.id,
-              name: foundProduct.name,
-              brand: foundProduct.brand,
-              price: typeof foundProduct.price === 'string' 
-                ? parseFloat(foundProduct.price.replace(/[^\d.-]/g, '')) 
-                : foundProduct.price,
-              stock: foundProduct.stock,
-              image: foundProduct.image || '/placeholder.svg',
-              category: foundProduct.category,
-              description: foundProduct.description || ''
-            };
-            setProduct(formattedProduct);
+        // If not found by UUID, try to fetch using the code/id as a string
+        if (error) {
+          const { data: productsByCode, error: productsError } = await supabase
+            .from('products')
+            .select('*')
+            .filter('id', 'ilike', `%${id}%`)
+            .limit(1);
+          
+          if (!productsError && productsByCode?.length > 0) {
+            productData = productsByCode[0];
+          }
+        }
+        
+        if (productData) {
+          // Format the product to match our Product interface
+          const formattedProduct: Product = {
+            id: productData.id,
+            name: productData.name,
+            brand: productData.brand,
+            price: productData.price,
+            stock: productData.stock,
+            image: productData.image || '/placeholder.svg',
+            category: productData.category,
+            description: productData.full_description || productData.short_description || '',
+            processor: productData.processor,
+            memory: productData.memory,
+            storage: productData.storage,
+            screenSize: productData.screen_size,
+            operatingSystem: productData.operating_system
+          };
+          
+          setProduct(formattedProduct);
+          
+          // Fetch related products (same category)
+          const { data: relatedData } = await supabase
+            .from('products')
+            .select('*')
+            .eq('category', productData.category)
+            .neq('id', productData.id)
+            .eq('is_published', true)
+            .limit(4);
             
-            // Find related products (same category)
-            const sameCategory = allProducts
-              .filter((p: any) => 
-                p.id.toString() !== id?.toString() && 
-                p.category === foundProduct.category && 
-                p.isPublished
-              )
-              .slice(0, 4)
-              .map((p: any) => ({
-                id: p.id,
-                name: p.name,
-                brand: p.brand,
-                price: typeof p.price === 'string' ? parseFloat(p.price.replace(/[^\d.-]/g, '')) : p.price,
-                stock: p.stock,
-                image: p.image || '/placeholder.svg',
-                category: p.category
-              }));
+          if (relatedData) {
+            const relatedFormatted = relatedData.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              brand: p.brand,
+              price: p.price,
+              stock: p.stock,
+              image: p.image || '/placeholder.svg',
+              category: p.category
+            }));
+            setRelatedProducts(relatedFormatted);
+          }
+        } else {
+          // If not found in Supabase, try localStorage as fallback
+          const storedProducts = localStorage.getItem('adminProducts');
+          if (storedProducts) {
+            const allProducts = JSON.parse(storedProducts);
+            const foundProduct = allProducts.find((p: any) => p.id.toString() === id?.toString());
+            
+            if (foundProduct) {
+              // Format the product to match our Product interface
+              const formattedProduct: Product = {
+                id: foundProduct.id,
+                name: foundProduct.name,
+                brand: foundProduct.brand,
+                price: typeof foundProduct.price === 'string' 
+                  ? parseFloat(foundProduct.price.replace(/[^\d.-]/g, '')) 
+                  : foundProduct.price,
+                stock: foundProduct.stock,
+                image: foundProduct.image || '/placeholder.svg',
+                category: foundProduct.category,
+                description: foundProduct.description || ''
+              };
+              setProduct(formattedProduct);
               
-            setRelatedProducts(sameCategory);
+              // Find related products from localStorage
+              const sameCategory = allProducts
+                .filter((p: any) => 
+                  p.id.toString() !== id?.toString() && 
+                  p.category === foundProduct.category && 
+                  p.isPublished
+                )
+                .slice(0, 4)
+                .map((p: any) => ({
+                  id: p.id,
+                  name: p.name,
+                  brand: p.brand,
+                  price: typeof p.price === 'string' ? parseFloat(p.price.replace(/[^\d.-]/g, '')) : p.price,
+                  stock: p.stock,
+                  image: p.image || '/placeholder.svg',
+                  category: p.category
+                }));
+                
+              setRelatedProducts(sameCategory);
+            }
           }
         }
       } catch (error) {
@@ -203,8 +268,10 @@ const ProductDetail = () => {
             
             {/* Status Badge */}
             <div className="mb-4">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                Em Estoque
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {product.stock > 0 ? 'Em Estoque' : 'Sem Estoque'}
               </span>
             </div>
             
@@ -230,36 +297,46 @@ const ProductDetail = () => {
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-2">Especificações</h3>
               <ul className="space-y-2">
-                <li className="flex items-center">
-                  <span className="inline-flex items-center justify-center w-5 h-5 mr-2">
-                    <span className="w-2 h-2 bg-gray-700 rounded-full"></span>
-                  </span>
-                  Processador: Intel Core i7 12ª geração
-                </li>
-                <li className="flex items-center">
-                  <span className="inline-flex items-center justify-center w-5 h-5 mr-2">
-                    <span className="w-2 h-2 bg-gray-700 rounded-full"></span>
-                  </span>
-                  Memória: 16GB DDR4
-                </li>
-                <li className="flex items-center">
-                  <span className="inline-flex items-center justify-center w-5 h-5 mr-2">
-                    <span className="w-2 h-2 bg-gray-700 rounded-full"></span>
-                  </span>
-                  Armazenamento: SSD 512GB
-                </li>
-                <li className="flex items-center">
-                  <span className="inline-flex items-center justify-center w-5 h-5 mr-2">
-                    <span className="w-2 h-2 bg-gray-700 rounded-full"></span>
-                  </span>
-                  Tela: 15.6" Full HD
-                </li>
-                <li className="flex items-center">
-                  <span className="inline-flex items-center justify-center w-5 h-5 mr-2">
-                    <span className="w-2 h-2 bg-gray-700 rounded-full"></span>
-                  </span>
-                  Bateria: 60Wh
-                </li>
+                {product.processor && (
+                  <li className="flex items-center">
+                    <span className="inline-flex items-center justify-center w-5 h-5 mr-2">
+                      <span className="w-2 h-2 bg-gray-700 rounded-full"></span>
+                    </span>
+                    Processador: {product.processor}
+                  </li>
+                )}
+                {product.memory && (
+                  <li className="flex items-center">
+                    <span className="inline-flex items-center justify-center w-5 h-5 mr-2">
+                      <span className="w-2 h-2 bg-gray-700 rounded-full"></span>
+                    </span>
+                    Memória: {product.memory}
+                  </li>
+                )}
+                {product.storage && (
+                  <li className="flex items-center">
+                    <span className="inline-flex items-center justify-center w-5 h-5 mr-2">
+                      <span className="w-2 h-2 bg-gray-700 rounded-full"></span>
+                    </span>
+                    Armazenamento: {product.storage}
+                  </li>
+                )}
+                {product.screenSize && (
+                  <li className="flex items-center">
+                    <span className="inline-flex items-center justify-center w-5 h-5 mr-2">
+                      <span className="w-2 h-2 bg-gray-700 rounded-full"></span>
+                    </span>
+                    Tela: {product.screenSize}
+                  </li>
+                )}
+                {product.operatingSystem && (
+                  <li className="flex items-center">
+                    <span className="inline-flex items-center justify-center w-5 h-5 mr-2">
+                      <span className="w-2 h-2 bg-gray-700 rounded-full"></span>
+                    </span>
+                    Sistema Operacional: {product.operatingSystem}
+                  </li>
+                )}
               </ul>
             </div>
             
@@ -326,9 +403,9 @@ const ProductDetail = () => {
                   computador confiável e poderoso.
                 </p>
                 <p>
-                  Equipado com a mais recente tecnologia Intel e uma tela de alta resolução, o {product.name} oferece uma 
+                  {product.description || `Equipado com a mais recente tecnologia e uma tela de alta resolução, o ${product.name} oferece uma 
                   experiência de computação excepcional. Seu teclado confortável e touchpad preciso tornam a digitação e 
-                  navegação uma experiência agradável.
+                  navegação uma experiência agradável.`}
                 </p>
               </div>
             </TabsContent>
@@ -336,38 +413,42 @@ const ProductDetail = () => {
               <div className="space-y-4">
                 <h3 className="text-xl font-bold mb-4">Especificações Técnicas</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Processador</h4>
-                    <p>Intel Core i7 12ª geração</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Memória</h4>
-                    <p>16GB DDR4 (expansível até 32GB)</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Armazenamento</h4>
-                    <p>SSD 512GB NVMe</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Placa de Vídeo</h4>
-                    <p>Intel Iris Xe Graphics</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Tela</h4>
-                    <p>15.6" Full HD (1920 x 1080) Anti-reflexo</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Sistema Operacional</h4>
-                    <p>Windows 11 Home</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Bateria</h4>
-                    <p>60Wh (até 10 horas de uso)</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Peso</h4>
-                    <p>1.8 kg</p>
-                  </div>
+                  {product.processor && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Processador</h4>
+                      <p>{product.processor}</p>
+                    </div>
+                  )}
+                  {product.memory && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Memória</h4>
+                      <p>{product.memory}</p>
+                    </div>
+                  )}
+                  {product.storage && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Armazenamento</h4>
+                      <p>{product.storage}</p>
+                    </div>
+                  )}
+                  {product.graphics && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Placa de Vídeo</h4>
+                      <p>{product.graphics || "Intel Iris Xe Graphics"}</p>
+                    </div>
+                  )}
+                  {product.screenSize && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Tela</h4>
+                      <p>{product.screenSize}</p>
+                    </div>
+                  )}
+                  {product.operatingSystem && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Sistema Operacional</h4>
+                      <p>{product.operatingSystem}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>

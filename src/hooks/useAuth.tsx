@@ -1,132 +1,154 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
-
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: "user" | "admin";
-};
+import { supabase } from "@/integrations/supabase/client";
+import { Session, User } from "@supabase/supabase-js";
 
 type AuthContextType = {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  session: Session | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const { toast } = useToast();
   
-  // Verificar se o usuário está autenticado ao carregar o componente
+  // Check for existing session and set up auth state listener
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    // Set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        if (currentSession?.user) {
+          // Check if user is admin with a setTimeout to avoid Supabase deadlock
+          setTimeout(async () => {
+            const { data } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', currentSession.user.id)
+              .single();
+              
+            setIsAdmin(data?.role === 'admin');
+            
+            // Update last access time
+            await supabase
+              .from('profiles')
+              .update({ last_access: new Date().toISOString() })
+              .eq('id', currentSession.user.id);
+          }, 0);
+        } else {
+          setIsAdmin(false);
+        }
+      }
+    );
     
-    // Adicionar um usuário admin no localStorage se ele não existir
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    const adminExists = users.some((u: any) => u.email === "admin@centurytech.com");
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      
+      if (currentSession?.user) {
+        // Check if user is admin
+        supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', currentSession.user.id)
+          .single()
+          .then(({ data }) => {
+            setIsAdmin(data?.role === 'admin');
+            
+            // Update last access time
+            return supabase
+              .from('profiles')
+              .update({ last_access: new Date().toISOString() })
+              .eq('id', currentSession.user.id);
+          });
+      }
+    });
     
-    if (!adminExists) {
-      users.push({
-        id: "admin-1",
-        name: "Admin",
-        email: "admin@centurytech.com",
-        password: "admin123",
-        role: "admin"
-      });
-      localStorage.setItem("users", JSON.stringify(users));
-    }
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simular uma verificação com o localStorage
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    const foundUser = users.find((u: any) => u.email === email && u.password === password);
-    
-    if (foundUser) {
-      const userRole = foundUser.role === "admin" ? "admin" : "user";
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       
-      const userData: User = {
-        id: foundUser.id,
-        name: foundUser.name,
-        email: foundUser.email,
-        role: userRole
-      };
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Erro de autenticação",
+          description: error.message || "Email ou senha incorretos.",
+        });
+        return false;
+      }
       
-      setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
       toast({
         title: "Login bem-sucedido",
-        description: `Bem-vindo de volta, ${foundUser.name}!`,
+        description: "Bem-vindo de volta!",
       });
       return true;
-    } else {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Erro de autenticação",
-        description: "Email ou senha incorretos.",
+        description: error.message || "Ocorreu um erro durante o login.",
       });
       return false;
     }
   };
 
   const register = async (name: string, email: string, password: string): Promise<boolean> => {
-    // Verificar se já existe um usuário com o mesmo e-mail
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    
-    if (users.some((u: any) => u.email === email)) {
+    try {
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            name: name,
+          }
+        } 
+      });
+      
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Erro no cadastro",
+          description: error.message || "Este e-mail já está em uso.",
+        });
+        return false;
+      }
+      
+      toast({
+        title: "Cadastro realizado com sucesso",
+        description: "Sua conta foi criada e você já está conectado!"
+      });
+      
+      return true;
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Erro no cadastro",
-        description: "Este e-mail já está em uso."
+        description: error.message || "Ocorreu um erro durante o cadastro.",
       });
       return false;
     }
-    
-    // Criar novo usuário
-    const newUser = {
-      id: `user-${Date.now()}`,
-      name,
-      email,
-      password,
-      role: "user" as const // Explicitamente tipado como "user"
-    };
-    
-    // Adicionar à "base de dados" (localStorage)
-    users.push(newUser);
-    localStorage.setItem("users", JSON.stringify(users));
-    
-    // Login automático após cadastro
-    const userData: User = {
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role
-    };
-    
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
-    
-    toast({
-      title: "Cadastro realizado com sucesso",
-      description: "Sua conta foi criada e você já está conectado!"
-    });
-    
-    return true;
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
+  const logout = async () => {
+    await supabase.auth.signOut();
     toast({
       title: "Desconectado",
       description: "Você saiu da sua conta com sucesso."
@@ -136,11 +158,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider value={{ 
       user, 
+      session,
       login, 
       register, 
       logout, 
       isAuthenticated: !!user,
-      isAdmin: !!user && user.role === "admin" 
+      isAdmin: isAdmin 
     }}>
       {children}
     </AuthContext.Provider>

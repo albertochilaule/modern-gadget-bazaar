@@ -15,6 +15,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define the user type
 type UserType = 'admin' | 'colaborador' | 'cliente';
@@ -26,8 +27,10 @@ interface User {
   email: string;
   password?: string;
   role: UserType;
-  lastAccess: string;
-  registrationDate: string;
+  last_access?: string;
+  lastAccess?: string;
+  registration_date?: string;
+  registrationDate?: string;
   status: 'ativo' | 'inativo';
 }
 
@@ -52,6 +55,7 @@ const AdminUsers = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   // Form
@@ -66,54 +70,57 @@ const AdminUsers = () => {
     }
   });
 
-  // Load initial users from localStorage
-  useEffect(() => {
-    const storedUsers = localStorage.getItem('users');
-    if (storedUsers) {
-      setUsers(JSON.parse(storedUsers));
-    } else {
-      // Default users
-      const defaultUsers = [
-        { 
-          id: '1', 
-          name: 'João Silva', 
-          email: 'joao.silva@century.com', 
-          role: 'admin' as UserType, 
-          lastAccess: '2024-03-15T14:30:00',
-          registrationDate: '2024-01-15',
-          status: 'ativo' as const
-        },
-        { 
-          id: '2', 
-          name: 'Maria Santos', 
-          email: 'maria.santos@century.com', 
-          role: 'colaborador' as UserType, 
-          lastAccess: '2024-03-15T13:45:00',
-          registrationDate: '2024-01-20',
-          status: 'ativo' as const
-        },
-        { 
-          id: '3', 
-          name: 'Pedro Oliveira', 
-          email: 'pedro.oliveira@email.com', 
-          role: 'cliente' as UserType, 
-          lastAccess: '2024-03-15T12:15:00',
-          registrationDate: '2024-03-01',
-          status: 'ativo' as const
-        },
-        { 
-          id: '4', 
-          name: 'Ana Silva', 
-          email: 'ana.silva@email.com', 
-          role: 'cliente' as UserType, 
-          lastAccess: '2024-03-15T10:30:00',
-          registrationDate: '2024-03-05',
-          status: 'ativo' as const
-        },
-      ];
-      setUsers(defaultUsers);
-      localStorage.setItem('users', JSON.stringify(defaultUsers));
+  // Fetch users from Supabase
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*');
+        
+      if (error) throw error;
+      
+      if (data) {
+        // Format users
+        const formattedUsers = data.map(user => ({
+          id: user.id,
+          name: user.name || '',
+          email: user.email,
+          role: user.role as UserType,
+          lastAccess: user.last_access,
+          registrationDate: user.registration_date,
+          status: user.status as 'ativo' | 'inativo'
+        }));
+        
+        setUsers(formattedUsers);
+      } else {
+        // Fallback to localStorage
+        const storedUsers = localStorage.getItem('users');
+        if (storedUsers) {
+          setUsers(JSON.parse(storedUsers));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: 'Erro ao carregar usuários',
+        description: 'Não foi possível carregar os usuários. Tente novamente mais tarde.',
+        variant: 'destructive'
+      });
+      
+      // Fallback to localStorage
+      const storedUsers = localStorage.getItem('users');
+      if (storedUsers) {
+        setUsers(JSON.parse(storedUsers));
+      }
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Load initial users
+  useEffect(() => {
+    fetchUsers();
   }, []);
 
   // Reset form when modal is opened
@@ -142,43 +149,115 @@ const AdminUsers = () => {
   }, [isAddUserOpen, editingUser, form]);
 
   // Handle form submission
-  const onSubmit = (values: UserFormValues) => {
+  const onSubmit = async (values: UserFormValues) => {
     if (editingUser) {
-      // Update existing user
-      const updatedUsers = users.map((user) => 
-        user.id === editingUser.id 
-          ? { 
-              ...user, 
-              name: values.name,
-              email: values.email,
-              role: values.role || user.role
-            } 
-          : user
-      );
-      setUsers(updatedUsers);
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-      toast({
-        title: "Usuário atualizado",
-        description: `${values.name} foi atualizado com sucesso`,
-      });
+      try {
+        // Update existing user in Supabase
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            name: values.name,
+            email: values.email,
+            role: values.role || 'cliente'
+          })
+          .match({ id: editingUser.id });
+          
+        if (error) throw error;
+        
+        // Update local state
+        const updatedUsers = users.map((user) => 
+          user.id === editingUser.id 
+            ? { 
+                ...user, 
+                name: values.name,
+                email: values.email,
+                role: values.role || user.role
+              } 
+            : user
+        );
+        setUsers(updatedUsers);
+        
+        // Update localStorage for fallback
+        localStorage.setItem('users', JSON.stringify(updatedUsers));
+        
+        toast({
+          title: "Usuário atualizado",
+          description: `${values.name} foi atualizado com sucesso`,
+        });
+      } catch (error) {
+        console.error('Error updating user:', error);
+        toast({
+          title: 'Erro ao atualizar usuário',
+          description: 'Não foi possível atualizar o usuário. Tente novamente mais tarde.',
+          variant: 'destructive'
+        });
+      }
     } else {
-      // Add new user
-      const newUser: User = {
-        id: `user-${Date.now()}`,
-        name: values.name,
-        email: values.email,
-        role: values.role || 'cliente',
-        lastAccess: '-',
-        registrationDate: format(new Date(), 'yyyy-MM-dd'),
-        status: 'ativo'
-      };
-      const updatedUsers = [...users, newUser];
-      setUsers(updatedUsers);
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-      toast({
-        title: "Usuário adicionado",
-        description: `${values.name} foi adicionado com sucesso`,
-      });
+      try {
+        // Create user in Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: values.email,
+          password: values.password,
+          options: {
+            data: {
+              name: values.name
+            }
+          }
+        });
+        
+        if (authError) throw authError;
+        
+        if (authData?.user) {
+          // The profile should be created automatically via the trigger
+          // Update the role if it's different from the default
+          if (values.role && values.role !== 'cliente') {
+            const { error } = await supabase
+              .from('profiles')
+              .update({ role: values.role })
+              .match({ id: authData.user.id });
+              
+            if (error) throw error;
+          }
+          
+          // Fetch the newly created user to get all fields
+          const { data: newUserData, error: fetchError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+            
+          if (fetchError) throw fetchError;
+          
+          // Format the new user
+          const newUser: User = {
+            id: newUserData.id,
+            name: newUserData.name || values.name,
+            email: newUserData.email,
+            role: newUserData.role as UserType,
+            lastAccess: newUserData.last_access || '-',
+            registrationDate: newUserData.registration_date,
+            status: newUserData.status as 'ativo' | 'inativo'
+          };
+          
+          // Update local state
+          setUsers([...users, newUser]);
+          
+          // Update localStorage for fallback
+          localStorage.setItem('users', JSON.stringify([...users, newUser]));
+          
+          toast({
+            title: "Usuário adicionado",
+            description: `${values.name} foi adicionado com sucesso`,
+          });
+        }
+      } catch (error: any) {
+        console.error('Error adding user:', error);
+        toast({
+          title: 'Erro ao adicionar usuário',
+          description: error.message || 'Não foi possível adicionar o usuário. Tente novamente mais tarde.',
+          variant: 'destructive'
+        });
+      }
     }
     
     // Close modal
@@ -187,14 +266,41 @@ const AdminUsers = () => {
   };
 
   // Delete user
-  const handleDeleteUser = (userId: string) => {
-    const updatedUsers = users.filter((user) => user.id !== userId);
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    toast({
-      title: "Usuário removido",
-      description: "O usuário foi removido com sucesso",
-    });
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      // Delete user from Supabase Auth
+      // Note: this will cascade to delete the profile due to our FK constraint
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (error) {
+        // If the admin API fails, try to update the status instead
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ status: 'inativo' })
+          .match({ id: userId });
+          
+        if (updateError) throw updateError;
+      }
+      
+      // Update local state
+      const updatedUsers = users.filter((user) => user.id !== userId);
+      setUsers(updatedUsers);
+      
+      // Update localStorage for fallback
+      localStorage.setItem('users', JSON.stringify(updatedUsers));
+      
+      toast({
+        title: "Usuário removido",
+        description: "O usuário foi removido com sucesso",
+      });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: 'Erro ao remover usuário',
+        description: 'Não foi possível remover o usuário. Provavelmente você não tem permissão para deletar usuários.',
+        variant: 'destructive'
+      });
+    }
   };
 
   // Edit user
@@ -204,8 +310,8 @@ const AdminUsers = () => {
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
-    if (dateString === '-') return '-';
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString || dateString === '-') return '-';
     try {
       if (dateString.includes('T')) {
         // Format with time
@@ -240,143 +346,153 @@ const AdminUsers = () => {
         </Button>
       </div>
 
-      {/* Administradores Section */}
-      {adminUsers.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Administradores</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {adminUsers.map((user) => (
-              <div key={user.id} className="border rounded-lg p-4 flex items-start">
-                <div className="bg-blue-600 h-10 w-10 rounded-full flex items-center justify-center text-white mr-4">
-                  <UserIcon className="h-6 w-6" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium">{user.name}</h3>
-                  <p className="text-sm text-gray-500">{user.email}</p>
-                  <p className="text-xs text-gray-400 mt-2">Último acesso: {formatDate(user.lastAccess)}</p>
-                </div>
-                <div className="flex space-x-1">
-                  <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
-                    <PencilIcon className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)}>
-                    <Trash2Icon className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <p className="text-gray-500">Carregando usuários...</p>
         </div>
-      )}
-
-      {/* Colaboradores Section */}
-      {collaboratorUsers.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Colaboradores</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {collaboratorUsers.map((user) => (
-              <div key={user.id} className="border rounded-lg p-4 flex items-start">
-                <div className="bg-green-600 h-10 w-10 rounded-full flex items-center justify-center text-white mr-4">
-                  <UserIcon className="h-6 w-6" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium flex items-center">
-                    {user.name}
-                    <Badge variant="outline" className="ml-2 bg-yellow-100 text-yellow-800 border-yellow-200">Colaborador</Badge>
-                  </h3>
-                  <p className="text-sm text-gray-500">{user.email}</p>
-                  <p className="text-xs text-gray-400 mt-2">Último acesso: {formatDate(user.lastAccess)}</p>
-                </div>
-                <div className="flex space-x-1">
-                  <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
-                    <PencilIcon className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)}>
-                    <Trash2Icon className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Clientes Section */}
-      {clientUsers.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Clientes</h2>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead>Data de Cadastro</TableHead>
-                <TableHead>Último Acesso</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentUsers.filter(user => user.role === 'cliente').map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{formatDate(user.registrationDate)}</TableCell>
-                  <TableCell>{formatDate(user.lastAccess)}</TableCell>
-                  <TableCell>
-                    <Badge className="bg-green-600">{user.status === 'ativo' ? 'Ativo' : 'Inativo'}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEditUser(user)}>
+      ) : (
+        <>
+          {/* Administradores Section */}
+          {adminUsers.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Administradores</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {adminUsers.map((user) => (
+                  <div key={user.id} className="border rounded-lg p-4 flex items-start">
+                    <div className="bg-blue-600 h-10 w-10 rounded-full flex items-center justify-center text-white mr-4">
+                      <UserIcon className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium">{user.name}</h3>
+                      <p className="text-sm text-gray-500">{user.email}</p>
+                      <p className="text-xs text-gray-400 mt-2">Último acesso: {formatDate(user.lastAccess || user.last_access)}</p>
+                    </div>
+                    <div className="flex space-x-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
                         <PencilIcon className="h-4 w-4" />
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
-                        <Trash2Icon className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)}>
+                        <Trash2Icon className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          
-          {/* Pagination */}
-          <div className="flex justify-between items-center text-sm text-muted-foreground">
-            <div>
-              Mostrando {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, clientUsers.length)} de {clientUsers.length} clientes
-            </div>
-            
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious 
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
-                
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <PaginationItem key={page}>
-                    <PaginationLink 
-                      isActive={currentPage === page}
-                      onClick={() => setCurrentPage(page)}
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
+                  </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Colaboradores Section */}
+          {collaboratorUsers.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Colaboradores</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {collaboratorUsers.map((user) => (
+                  <div key={user.id} className="border rounded-lg p-4 flex items-start">
+                    <div className="bg-green-600 h-10 w-10 rounded-full flex items-center justify-center text-white mr-4">
+                      <UserIcon className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium flex items-center">
+                        {user.name}
+                        <Badge variant="outline" className="ml-2 bg-yellow-100 text-yellow-800 border-yellow-200">Colaborador</Badge>
+                      </h3>
+                      <p className="text-sm text-gray-500">{user.email}</p>
+                      <p className="text-xs text-gray-400 mt-2">Último acesso: {formatDate(user.lastAccess || user.last_access)}</p>
+                    </div>
+                    <div className="flex space-x-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                        <PencilIcon className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)}>
+                        <Trash2Icon className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Clientes Section */}
+          {clientUsers.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Clientes</h2>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>E-mail</TableHead>
+                    <TableHead>Data de Cadastro</TableHead>
+                    <TableHead>Último Acesso</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentUsers.filter(user => user.role === 'cliente').map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>{user.name}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{formatDate(user.registrationDate || user.registration_date)}</TableCell>
+                      <TableCell>{formatDate(user.lastAccess || user.last_access)}</TableCell>
+                      <TableCell>
+                        <Badge className={user.status === 'ativo' ? "bg-green-600" : "bg-red-600"}>
+                          {user.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="outline" size="sm" onClick={() => handleEditUser(user)}>
+                            <PencilIcon className="h-4 w-4" />
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                            <Trash2Icon className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              {/* Pagination */}
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
+                <div>
+                  Mostrando {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, clientUsers.length)} de {clientUsers.length} clientes
+                </div>
                 
-                <PaginationItem>
-                  <PaginationNext 
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        </div>
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                    
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <PaginationItem key={page}>
+                        <PaginationLink 
+                          isActive={currentPage === page}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* User Form Modal */}

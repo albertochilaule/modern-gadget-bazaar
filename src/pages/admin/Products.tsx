@@ -7,22 +7,26 @@ import { Plus, ShoppingCart, Edit, Trash2, Filter, Search, Eye, EyeOff } from 'l
 import { useToast } from '@/hooks/use-toast';
 import AddProductModal from '@/components/admin/AddProductModal';
 import SaleModal from '@/components/admin/SaleModal';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Product {
   id: string;
   name: string;
   brand: string;
   category: string;
-  price: string;
+  price: string | number;
   stock: number;
   status: 'Ativo' | 'Inativo' | 'Estoque Baixo';
   isPublished: boolean;
+  is_published?: boolean;
   image?: string;
   processor?: string;
   memory?: string;
   storage?: string;
   screenSize?: string;
+  screen_size?: string;
   operatingSystem?: string;
+  operating_system?: string;
 }
 
 const STATUS_COLORS = {
@@ -38,31 +42,81 @@ const AdminProducts = () => {
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Retrieve products from localStorage or use default data
-  const getStoredProducts = (): Product[] => {
-    const stored = localStorage.getItem('adminProducts');
-    if (stored) {
-      return JSON.parse(stored);
+  // State for products
+  const [products, setProducts] = useState<Product[]>([]);
+  
+  // Fetch products from Supabase
+  const fetchProducts = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*');
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        // Convert Supabase data to our Product interface
+        const formattedProducts = data.map(product => ({
+          id: product.id,
+          name: product.name,
+          brand: product.brand,
+          category: product.category,
+          price: product.price,
+          stock: product.stock,
+          status: determineStatus(product.stock),
+          isPublished: product.is_published,
+          image: product.image || '/placeholder.svg',
+          processor: product.processor,
+          memory: product.memory,
+          storage: product.storage,
+          screenSize: product.screen_size,
+          operatingSystem: product.operating_system
+        }));
+        
+        setProducts(formattedProducts);
+        // Also save to localStorage for compatibility with other components
+        localStorage.setItem('adminProducts', JSON.stringify(formattedProducts));
+      } else {
+        // Fallback to localStorage if no Supabase data
+        const stored = localStorage.getItem('adminProducts');
+        if (stored) {
+          setProducts(JSON.parse(stored));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast({
+        title: 'Erro ao carregar produtos',
+        description: 'Não foi possível carregar os produtos. Tente novamente mais tarde.',
+        variant: 'destructive'
+      });
+      
+      // Fallback to localStorage if Supabase fails
+      const stored = localStorage.getItem('adminProducts');
+      if (stored) {
+        setProducts(JSON.parse(stored));
+      }
+    } finally {
+      setIsLoading(false);
     }
-    
-    // Default products with isPublished field
-    return [
-      { id: '#001', name: 'Dell XPS 15', brand: 'Dell', category: 'Laptops', price: 'R$ 4.999,00', stock: 15, status: 'Ativo', isPublished: true, image: '/placeholder.svg', processor: 'Intel i7', memory: '16GB', storage: '512GB SSD', screenSize: '15.6"', operatingSystem: 'Windows 11' },
-      { id: '#002', name: 'MacBook Pro M1', brand: 'Apple', category: 'Laptops', price: 'R$ 8.999,00', stock: 8, status: 'Ativo', isPublished: true, image: '/placeholder.svg', processor: 'Apple M1', memory: '8GB', storage: '256GB SSD', screenSize: '13.3"', operatingSystem: 'macOS' },
-      { id: '#003', name: 'Lenovo ThinkPad X1', brand: 'Lenovo', category: 'Laptops', price: 'R$ 6.999,00', stock: 3, status: 'Estoque Baixo', isPublished: true, image: '/placeholder.svg', processor: 'Intel i5', memory: '8GB', storage: '256GB SSD', screenSize: '14"', operatingSystem: 'Windows 10' },
-      { id: '#004', name: 'HP Spectre', brand: 'HP', category: 'Laptops', price: 'R$ 7.899,00', stock: 0, status: 'Inativo', isPublished: false, image: '/placeholder.svg', processor: 'Intel i7', memory: '16GB', storage: '1TB SSD', screenSize: '13.5"', operatingSystem: 'Windows 11' },
-      { id: '#005', name: 'Samsung Galaxy S21', brand: 'Samsung', category: 'Smartphones', price: 'R$ 3.999,00', stock: 12, status: 'Ativo', isPublished: true, image: '/placeholder.svg', processor: 'Exynos 2100', memory: '8GB', storage: '128GB', screenSize: '6.2"', operatingSystem: 'Android 11' },
-      { id: '#006', name: 'iPhone 13', brand: 'Apple', category: 'Smartphones', price: 'R$ 5.999,00', stock: 7, status: 'Ativo', isPublished: true, image: '/placeholder.svg', processor: 'A15 Bionic', memory: '4GB', storage: '128GB', screenSize: '6.1"', operatingSystem: 'iOS 15' },
-    ];
   };
   
-  const [products, setProducts] = useState<Product[]>(getStoredProducts());
+  // Helper function to determine status based on stock
+  const determineStatus = (stock: number): 'Ativo' | 'Inativo' | 'Estoque Baixo' => {
+    if (stock === 0) return 'Inativo';
+    if (stock <= 3) return 'Estoque Baixo';
+    return 'Ativo';
+  };
   
-  // Save products to localStorage whenever they change
+  // Initial data load
   useEffect(() => {
-    localStorage.setItem('adminProducts', JSON.stringify(products));
-  }, [products]);
+    fetchProducts();
+  }, []);
   
   // Filter states
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -74,70 +128,252 @@ const AdminProducts = () => {
   const categories = [...new Set(products.map(product => product.category))];
   const brands = [...new Set(products.map(product => product.brand))];
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este produto?')) {
-      setProducts(products.filter(product => product.id !== id));
+      try {
+        const { error } = await supabase
+          .from('products')
+          .delete()
+          .match({ id });
+          
+        if (error) throw error;
+        
+        // Update local state
+        setProducts(products.filter(product => product.id !== id));
+        // Update localStorage
+        localStorage.setItem('adminProducts', JSON.stringify(products.filter(product => product.id !== id)));
+        
+        toast({
+          title: "Produto removido",
+          description: "O produto foi removido com sucesso."
+        });
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        toast({
+          title: 'Erro ao excluir produto',
+          description: 'Não foi possível excluir o produto. Tente novamente mais tarde.',
+          variant: 'destructive'
+        });
+      }
+    }
+  };
+
+  const handleToggleVisibility = async (product: Product) => {
+    try {
+      const newIsPublished = !product.isPublished;
+      
+      const { error } = await supabase
+        .from('products')
+        .update({ is_published: newIsPublished })
+        .match({ id: product.id });
+        
+      if (error) throw error;
+      
+      // Update local state
+      const updatedProducts = products.map(p => 
+        p.id === product.id ? { ...p, isPublished: newIsPublished } : p
+      );
+      setProducts(updatedProducts);
+      // Update localStorage
+      localStorage.setItem('adminProducts', JSON.stringify(updatedProducts));
+      
       toast({
-        title: "Produto removido",
-        description: "O produto foi removido com sucesso."
+        title: product.isPublished ? "Produto ocultado" : "Produto publicado",
+        description: `O produto foi ${product.isPublished ? 'ocultado do' : 'publicado para o'} público com sucesso.`,
+        variant: "success"
+      });
+    } catch (error) {
+      console.error('Error updating product visibility:', error);
+      toast({
+        title: 'Erro ao alterar visibilidade',
+        description: 'Não foi possível alterar a visibilidade do produto. Tente novamente mais tarde.',
+        variant: 'destructive'
       });
     }
   };
 
-  const handleToggleVisibility = (product: Product) => {
-    const updatedProducts = products.map(p => 
-      p.id === product.id ? { ...p, isPublished: !p.isPublished } : p
-    );
-    setProducts(updatedProducts);
-    toast({
-      title: product.isPublished ? "Produto ocultado" : "Produto publicado",
-      description: `O produto foi ${product.isPublished ? 'ocultado do' : 'publicado para o'} público com sucesso.`,
-      variant: "success"
-    });
-  };
-
-  const handleAddProduct = (product: Omit<Product, 'id'>) => {
-    const newId = `#${String(products.length + 1).padStart(3, '0')}`;
-    setProducts([...products, { ...product, id: newId, isPublished: product.isPublished !== undefined ? product.isPublished : true }]);
-    setIsAddModalOpen(false);
-    toast({
-      title: "Produto adicionado",
-      description: "O novo produto foi adicionado com sucesso."
-    });
-  };
-  
-  const handleEditProduct = (updatedProduct: Product) => {
-    setProducts(products.map(product => 
-      product.id === updatedProduct.id ? updatedProduct : product
-    ));
-    setIsEditModalOpen(false);
-    setEditProduct(null);
-    toast({
-      title: "Produto atualizado",
-      description: "O produto foi atualizado com sucesso."
-    });
-  };
-
-  const handleSale = (saleData: any) => {
-    // Find the product being sold
-    const productIndex = products.findIndex(p => p.id === saleData.productId);
-    if (productIndex >= 0) {
-      // Create a copy of the products array
-      const updatedProducts = [...products];
-      // Subtract the sold quantity from the product's stock
-      const newStock = Math.max(0, updatedProducts[productIndex].stock - saleData.quantity);
-      updatedProducts[productIndex] = {
-        ...updatedProducts[productIndex],
-        stock: newStock,
-        // Update status if stock is low or depleted
-        status: newStock === 0 ? 'Inativo' : newStock <= 3 ? 'Estoque Baixo' : 'Ativo'
+  const handleAddProduct = async (product: Omit<Product, 'id' | 'status'>) => {
+    try {
+      // Determine status based on stock
+      const status = determineStatus(product.stock);
+      
+      // Prepare data for Supabase
+      const supabaseData = {
+        name: product.name,
+        brand: product.brand,
+        category: product.category,
+        price: product.price,
+        stock: product.stock,
+        is_published: product.is_published !== undefined ? product.is_published : true,
+        image: product.image,
+        processor: product.processor,
+        memory: product.memory,
+        storage: product.storage,
+        screen_size: product.screenSize || product.screen_size,
+        operating_system: product.operatingSystem || product.operating_system
       };
       
-      setProducts(updatedProducts);
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from('products')
+        .insert(supabaseData)
+        .select('*')
+        .single();
+        
+      if (error) throw error;
       
+      // Format the new product with the generated ID
+      const newProduct: Product = {
+        id: data.id,
+        name: data.name,
+        brand: data.brand,
+        category: data.category,
+        price: data.price,
+        stock: data.stock,
+        status,
+        isPublished: data.is_published,
+        image: data.image || '/placeholder.svg',
+        processor: data.processor,
+        memory: data.memory,
+        storage: data.storage,
+        screenSize: data.screen_size,
+        operatingSystem: data.operating_system
+      };
+      
+      // Update local state
+      setProducts([...products, newProduct]);
+      // Update localStorage
+      localStorage.setItem('adminProducts', JSON.stringify([...products, newProduct]));
+      
+      setIsAddModalOpen(false);
       toast({
-        title: "Venda registrada",
-        description: `Venda de ${saleData.quantity} unidades para ${saleData.customerName} registrada com sucesso.`
+        title: "Produto adicionado",
+        description: "O novo produto foi adicionado com sucesso."
+      });
+    } catch (error) {
+      console.error('Error adding product:', error);
+      toast({
+        title: 'Erro ao adicionar produto',
+        description: 'Não foi possível adicionar o produto. Tente novamente mais tarde.',
+        variant: 'destructive'
+      });
+    }
+  };
+  
+  const handleEditProduct = async (updatedProduct: Product) => {
+    try {
+      // Determine status based on stock
+      const status = determineStatus(updatedProduct.stock);
+      
+      // Prepare data for Supabase
+      const supabaseData = {
+        name: updatedProduct.name,
+        brand: updatedProduct.brand,
+        category: updatedProduct.category,
+        price: updatedProduct.price,
+        stock: updatedProduct.stock,
+        is_published: updatedProduct.isPublished,
+        image: updatedProduct.image,
+        processor: updatedProduct.processor,
+        memory: updatedProduct.memory,
+        storage: updatedProduct.storage,
+        screen_size: updatedProduct.screenSize || updatedProduct.screen_size,
+        operating_system: updatedProduct.operatingSystem || updatedProduct.operating_system
+      };
+      
+      // Update in Supabase
+      const { error } = await supabase
+        .from('products')
+        .update(supabaseData)
+        .match({ id: updatedProduct.id });
+        
+      if (error) throw error;
+      
+      // Update local state with status
+      const productWithStatus = {
+        ...updatedProduct,
+        status
+      };
+      
+      setProducts(products.map(product => 
+        product.id === updatedProduct.id ? productWithStatus : product
+      ));
+      
+      // Update localStorage
+      localStorage.setItem('adminProducts', JSON.stringify(
+        products.map(product => product.id === updatedProduct.id ? productWithStatus : product)
+      ));
+      
+      setIsEditModalOpen(false);
+      setEditProduct(null);
+      toast({
+        title: "Produto atualizado",
+        description: "O produto foi atualizado com sucesso."
+      });
+    } catch (error) {
+      console.error('Error updating product:', error);
+      toast({
+        title: 'Erro ao atualizar produto',
+        description: 'Não foi possível atualizar o produto. Tente novamente mais tarde.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleSale = async (saleData: any) => {
+    try {
+      // Find the product being sold
+      const productIndex = products.findIndex(p => p.id === saleData.productId);
+      if (productIndex >= 0) {
+        // Calculate new stock level
+        const newStock = Math.max(0, products[productIndex].stock - saleData.quantity);
+        const newStatus = determineStatus(newStock);
+        
+        // Update product stock in Supabase
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ stock: newStock })
+          .match({ id: saleData.productId });
+          
+        if (updateError) throw updateError;
+        
+        // Record the sale in the sales table
+        const { error: saleError } = await supabase
+          .from('sales')
+          .insert({
+            product_id: saleData.productId,
+            customer_name: saleData.customerName,
+            quantity: saleData.quantity,
+            total_price: saleData.totalPrice || products[productIndex].price * saleData.quantity,
+            created_by: (await supabase.auth.getUser()).data.user?.id
+          });
+          
+        if (saleError) throw saleError;
+        
+        // Update local state
+        const updatedProducts = [...products];
+        updatedProducts[productIndex] = {
+          ...updatedProducts[productIndex],
+          stock: newStock,
+          status: newStatus
+        };
+        
+        setProducts(updatedProducts);
+        
+        // Update localStorage
+        localStorage.setItem('adminProducts', JSON.stringify(updatedProducts));
+        
+        toast({
+          title: "Venda registrada",
+          description: `Venda de ${saleData.quantity} unidades para ${saleData.customerName} registrada com sucesso.`
+        });
+      }
+    } catch (error) {
+      console.error('Error recording sale:', error);
+      toast({
+        title: 'Erro ao registrar venda',
+        description: 'Não foi possível registrar a venda. Tente novamente mais tarde.',
+        variant: 'destructive'
       });
     }
     setIsSaleModalOpen(false);
@@ -302,10 +538,16 @@ const AdminProducts = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.length > 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={10} className="p-4 text-center">
+                      Carregando produtos...
+                    </td>
+                  </tr>
+                ) : filteredProducts.length > 0 ? (
                   filteredProducts.map((product) => (
                     <tr key={product.id} className="border-b">
-                      <td className="p-4">{product.id}</td>
+                      <td className="p-4">{typeof product.id === 'string' && product.id.length > 10 ? product.id.substring(0, 8) + '...' : product.id}</td>
                       <td className="p-4">
                         <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden">
                           <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
@@ -314,7 +556,11 @@ const AdminProducts = () => {
                       <td className="p-4">{product.name}</td>
                       <td className="p-4">{product.brand}</td>
                       <td className="p-4">{product.category}</td>
-                      <td className="p-4">{product.price}</td>
+                      <td className="p-4">
+                        {typeof product.price === 'number' 
+                          ? `R$ ${product.price.toLocaleString('pt-BR', {minimumFractionDigits: 2})}` 
+                          : product.price}
+                      </td>
                       <td className="p-4">{product.stock}</td>
                       <td className="p-4">
                         <span className={`px-2 py-1 rounded text-xs font-medium text-white ${STATUS_COLORS[product.status]}`}>

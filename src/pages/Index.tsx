@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { Product } from "@/components/ProductCard";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -18,147 +20,119 @@ const Index = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(100000);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const getStoredProducts = () => {
-      const stored = localStorage.getItem('adminProducts');
-      if (stored) {
-        try {
-          const adminProducts = JSON.parse(stored);
-          
-          const formattedProducts = adminProducts
-            .filter((product: any) => product.isPublished)
-            .map((product: any) => ({
-              id: product.id,
-              name: product.name,
-              brand: product.brand,
-              price: typeof product.price === 'string' 
-                ? parseFloat(product.price.replace(/[^\d.-]/g, '')) 
-                : product.price,
-              stock: product.stock,
-              image: product.image || '/placeholder.svg',
-              category: product.category
-            }));
-          
-          return formattedProducts;
-        } catch (e) {
-          console.error("Error parsing stored products:", e);
-          return [];
-        }
-      }
+    const fetchProducts = async () => {
+      setLoading(true);
       
-      return [
-        {
-          id: 1,
-          name: "Nav 3000",
-          brand: "HP",
-          price: 15000,
-          stock: 5,
-          image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=300&fit=crop",
-          category: "Laptops"
-        },
-        {
-          id: 2,
-          name: "Tivo 3000",
-          brand: "Acer",
-          price: 35000,
-          stock: 3,
-          image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=300&fit=crop",
-          category: "Laptops"
-        },
-        {
-          id: 3,
-          name: "Dell XPS",
-          brand: "Dell",
-          price: 45000,
-          stock: 2,
-          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop",
-          category: "Laptops"
-        },
-        {
-          id: 4,
-          name: "Lenovo ThinkPad",
-          brand: "Lenovo",
-          price: 25000,
-          stock: 4,
-          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop",
-          category: "Laptops"
-        },
-        {
-          id: 5,
-          name: "MacBook Pro",
-          brand: "Apple",
-          price: 85000,
-          stock: 2,
-          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop",
-          category: "Laptops"
-        },
-        {
-          id: 6,
-          name: "ASUS ROG",
-          brand: "ASUS",
-          price: 65000,
-          stock: 3,
-          image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=300&fit=crop",
-          category: "PC Gamers"
-        },
-        {
-          id: 7,
-          name: "MSI Gaming",
-          brand: "MSI",
-          price: 75000,
-          stock: 1,
-          image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=300&fit=crop",
-          category: "PC Gamers"
-        },
-        {
-          id: 8,
-          name: "Razer Blade",
-          brand: "Razer",
-          price: 95000,
-          stock: 2,
-          image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=300&fit=crop",
-          category: "Laptops"
-        },
-        {
-          id: 9,
-          name: "Alienware",
-          brand: "Dell",
-          price: 105000,
-          stock: 1,
-          image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=300&fit=crop",
-          category: "PC Gamers"
-        },
-        {
-          id: 10,
-          name: "HP Omen",
-          brand: "HP",
-          price: 55000,
-          stock: 4,
-          image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=300&fit=crop",
-          category: "PC Gamers"
+      try {
+        // Fetch from Supabase
+        const { data: productsData, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('is_published', true);
+          
+        if (error) {
+          throw error;
         }
-      ];
+        
+        if (productsData && productsData.length > 0) {
+          // Format products to match our Product interface
+          const formattedProducts = productsData.map(product => ({
+            id: product.id,
+            name: product.name,
+            brand: product.brand,
+            price: product.price,
+            stock: product.stock,
+            image: product.image || '/placeholder.svg',
+            category: product.category
+          }));
+          
+          setProducts(formattedProducts);
+          setFilteredProducts(formattedProducts);
+          
+          // Extract unique categories and brands
+          const uniqueCategories = Array.from(
+            new Set(formattedProducts.map(product => product.category || '').filter(Boolean))
+          ) as string[];
+          setCategories(uniqueCategories);
+          
+          const uniqueBrands = Array.from(
+            new Set(formattedProducts.map(product => product.brand))
+          ) as string[];
+          setBrands(uniqueBrands);
+          
+          // Calculate max price
+          const highestPrice = Math.max(
+            ...formattedProducts.map(product => {
+              const numPrice = typeof product.price === 'string'
+                ? parseFloat(product.price.replace(/[^\d.-]/g, ''))
+                : product.price;
+              return numPrice;
+            })
+          );
+          setMaxPrice(highestPrice);
+        } else {
+          // Fallback to localStorage if no products in Supabase
+          const storedProducts = localStorage.getItem('adminProducts');
+          if (storedProducts) {
+            try {
+              const adminProducts = JSON.parse(storedProducts);
+              
+              const formattedProducts = adminProducts
+                .filter((product: any) => product.isPublished)
+                .map((product: any) => ({
+                  id: product.id,
+                  name: product.name,
+                  brand: product.brand,
+                  price: typeof product.price === 'string' 
+                    ? parseFloat(product.price.replace(/[^\d.-]/g, '')) 
+                    : product.price,
+                  stock: product.stock,
+                  image: product.image || '/placeholder.svg',
+                  category: product.category
+                }));
+              
+              setProducts(formattedProducts);
+              setFilteredProducts(formattedProducts);
+              
+              // Extract unique categories and brands
+              const uniqueCategories = Array.from(
+                new Set(formattedProducts.map(product => product.category || '').filter(Boolean))
+              ) as string[];
+              setCategories(uniqueCategories);
+              
+              const uniqueBrands = Array.from(
+                new Set(formattedProducts.map(product => product.brand))
+              ) as string[];
+              setBrands(uniqueBrands);
+              
+              // Calculate max price
+              const highestPrice = Math.max(
+                ...formattedProducts.map(product => {
+                  const numPrice = typeof product.price === 'string'
+                    ? parseFloat(product.price.replace(/[^\d.-]/g, ''))
+                    : product.price;
+                  return numPrice;
+                })
+              );
+              setMaxPrice(highestPrice);
+            } catch (e) {
+              console.error("Error parsing stored products:", e);
+              setProducts([]);
+              setFilteredProducts([]);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
+      }
     };
-
-    const loadedProducts = getStoredProducts();
-    setProducts(loadedProducts);
-    setFilteredProducts(loadedProducts);
     
-    const uniqueCategories = Array.from(new Set(loadedProducts.map(product => product.category || '')
-      .filter(Boolean))) as string[];
-    setCategories(uniqueCategories);
-    
-    const uniqueBrands = Array.from(new Set(loadedProducts.map(product => product.brand))) as string[];
-    setBrands(uniqueBrands);
-    
-    const highestPrice = Math.max(...loadedProducts.map((product: Product) => {
-      const numPrice = typeof product.price === 'string' 
-        ? parseFloat(product.price.replace(/[^\d.-]/g, '')) 
-        : product.price;
-      return numPrice;
-    }));
-    setMaxPrice(highestPrice);
+    fetchProducts();
   }, []);
 
   const applyFilters = (
@@ -260,6 +234,7 @@ const Index = () => {
             <div className="md:col-span-3">
               <ProductsSection 
                 products={filteredProducts} 
+                isLoading={loading}
                 title={searchQuery ? `Resultados para "${searchQuery}"` : "Produtos em Destaque"} 
               />
             </div>

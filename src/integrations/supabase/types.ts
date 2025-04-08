@@ -9,7 +9,158 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      products: {
+        Row: {
+          battery: string | null
+          brand: string
+          category: string
+          colors: string | null
+          created_at: string
+          dimensions: string | null
+          display: string | null
+          full_description: string | null
+          graphics: string | null
+          id: string
+          image: string | null
+          is_published: boolean
+          memory: string | null
+          name: string
+          operating_system: string | null
+          price: number
+          processor: string | null
+          screen_size: string | null
+          short_description: string | null
+          status: string
+          stock: number
+          storage: string | null
+          updated_at: string
+          warranty: string | null
+          weight: string | null
+        }
+        Insert: {
+          battery?: string | null
+          brand: string
+          category: string
+          colors?: string | null
+          created_at?: string
+          dimensions?: string | null
+          display?: string | null
+          full_description?: string | null
+          graphics?: string | null
+          id?: string
+          image?: string | null
+          is_published?: boolean
+          memory?: string | null
+          name: string
+          operating_system?: string | null
+          price: number
+          processor?: string | null
+          screen_size?: string | null
+          short_description?: string | null
+          status?: string
+          stock?: number
+          storage?: string | null
+          updated_at?: string
+          warranty?: string | null
+          weight?: string | null
+        }
+        Update: {
+          battery?: string | null
+          brand?: string
+          category?: string
+          colors?: string | null
+          created_at?: string
+          dimensions?: string | null
+          display?: string | null
+          full_description?: string | null
+          graphics?: string | null
+          id?: string
+          image?: string | null
+          is_published?: boolean
+          memory?: string | null
+          name?: string
+          operating_system?: string | null
+          price?: number
+          processor?: string | null
+          screen_size?: string | null
+          short_description?: string | null
+          status?: string
+          stock?: number
+          storage?: string | null
+          updated_at?: string
+          warranty?: string | null
+          weight?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          email: string
+          id: string
+          last_access: string | null
+          name: string | null
+          registration_date: string
+          role: string
+          status: string
+        }
+        Insert: {
+          email: string
+          id: string
+          last_access?: string | null
+          name?: string | null
+          registration_date?: string
+          role?: string
+          status?: string
+        }
+        Update: {
+          email?: string
+          id?: string
+          last_access?: string | null
+          name?: string | null
+          registration_date?: string
+          role?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      sales: {
+        Row: {
+          created_by: string | null
+          customer_name: string
+          id: string
+          product_id: string | null
+          quantity: number
+          sale_date: string
+          total_price: number
+        }
+        Insert: {
+          created_by?: string | null
+          customer_name: string
+          id?: string
+          product_id?: string | null
+          quantity: number
+          sale_date?: string
+          total_price: number
+        }
+        Update: {
+          created_by?: string | null
+          customer_name?: string
+          id?: string
+          product_id?: string | null
+          quantity?: number
+          sale_date?: string
+          total_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
