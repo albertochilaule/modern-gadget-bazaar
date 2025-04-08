@@ -2,10 +2,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Session, User } from "@supabase/supabase-js";
+import { Session } from "@supabase/supabase-js";
+import { ExtendedUser, Profile } from "@/types/supabase";
 
 type AuthContextType = {
-  user: User | null;
+  user: ExtendedUser | null;
   session: Session | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -17,7 +18,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const { toast } = useToast();
@@ -28,26 +29,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
-        setUser(currentSession?.user ?? null);
         
         if (currentSession?.user) {
+          // Create extended user with profile data
+          const extendedUser = currentSession.user as ExtendedUser;
+          
           // Check if user is admin with a setTimeout to avoid Supabase deadlock
           setTimeout(async () => {
             const { data } = await supabase
               .from('profiles')
-              .select('role')
+              .select('*')
               .eq('id', currentSession.user.id)
               .single();
               
-            setIsAdmin(data?.role === 'admin');
+            if (data) {
+              extendedUser.name = data.name;
+              setIsAdmin(data.role === 'admin');
             
-            // Update last access time
-            await supabase
-              .from('profiles')
-              .update({ last_access: new Date().toISOString() })
-              .eq('id', currentSession.user.id);
+              // Update last access time
+              await supabase
+                .from('profiles')
+                .update({ last_access: new Date().toISOString() })
+                .eq('id', currentSession.user.id);
+            }
+            
+            setUser(extendedUser);
           }, 0);
         } else {
+          setUser(null);
           setIsAdmin(false);
         }
       }
@@ -56,23 +65,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Then check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
-      setUser(currentSession?.user ?? null);
       
       if (currentSession?.user) {
+        // Create extended user with profile data
+        const extendedUser = currentSession.user as ExtendedUser;
+        
         // Check if user is admin
         supabase
           .from('profiles')
-          .select('role')
+          .select('*')
           .eq('id', currentSession.user.id)
           .single()
           .then(({ data }) => {
-            setIsAdmin(data?.role === 'admin');
+            if (data) {
+              extendedUser.name = data.name;
+              setIsAdmin(data.role === 'admin');
             
-            // Update last access time
-            return supabase
-              .from('profiles')
-              .update({ last_access: new Date().toISOString() })
-              .eq('id', currentSession.user.id);
+              // Update last access time
+              return supabase
+                .from('profiles')
+                .update({ last_access: new Date().toISOString() })
+                .eq('id', currentSession.user.id);
+            }
+          })
+          .finally(() => {
+            setUser(extendedUser);
           });
       }
     });

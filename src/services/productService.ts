@@ -1,9 +1,10 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/utils/supabaseClient';
 import { Product } from '@/components/ProductCard';
+import { DbProduct } from '@/types/supabase';
 
 // Convert database product to frontend product
-export const convertDbProductToProduct = (dbProduct: any): Product => {
+export const convertDbProductToProduct = (dbProduct: DbProduct): Product => {
   return {
     id: dbProduct.id,
     name: dbProduct.name,
@@ -89,7 +90,7 @@ export const createProduct = async (product: Omit<Product, 'id'>): Promise<Produ
     const supabaseData = {
       name: product.name,
       brand: product.brand,
-      category: product.category,
+      category: product.category || '',
       price: product.price,
       stock: product.stock,
       is_published: Boolean(product.isPublished),
@@ -111,6 +112,10 @@ export const createProduct = async (product: Omit<Product, 'id'>): Promise<Produ
       
     if (error) {
       throw error;
+    }
+    
+    if (!data) {
+      throw new Error('No data returned from insert operation');
     }
     
     return convertDbProductToProduct(data);
@@ -146,12 +151,16 @@ export const updateProduct = async (id: string, product: Partial<Product>): Prom
     const { data, error } = await supabase
       .from('products')
       .update(supabaseData)
-      .match({ id })
+      .eq('id', id)
       .select('*')
       .single();
       
     if (error) {
       throw error;
+    }
+    
+    if (!data) {
+      throw new Error('No data returned from update operation');
     }
     
     return convertDbProductToProduct(data);
@@ -167,7 +176,7 @@ export const deleteProduct = async (id: string): Promise<void> => {
     const { error } = await supabase
       .from('products')
       .delete()
-      .match({ id });
+      .eq('id', id);
       
     if (error) {
       throw error;
@@ -184,7 +193,7 @@ export const updateProductStock = async (id: string, newStock: number): Promise<
     const { error } = await supabase
       .from('products')
       .update({ stock: newStock })
-      .match({ id });
+      .eq('id', id);
       
     if (error) {
       throw error;
