@@ -27,6 +27,7 @@ interface Product {
   screen_size?: string;
   operatingSystem?: string;
   operating_system?: string;
+  graphics?: string;
 }
 
 const STATUS_COLORS = {
@@ -72,7 +73,8 @@ const AdminProducts = () => {
           memory: product.memory,
           storage: product.storage,
           screenSize: product.screen_size,
-          operatingSystem: product.operating_system
+          operatingSystem: product.operating_system,
+          graphics: product.graphics
         }));
         
         setProducts(formattedProducts);
@@ -194,7 +196,8 @@ const AdminProducts = () => {
         memory: product.memory,
         storage: product.storage,
         screen_size: product.screenSize || product.screen_size,
-        operating_system: product.operatingSystem || product.operating_system
+        operating_system: product.operatingSystem || product.operating_system,
+        graphics: product.graphics
       };
       
       const { data, error } = await supabase
@@ -223,7 +226,8 @@ const AdminProducts = () => {
         memory: data.memory,
         storage: data.storage,
         screenSize: data.screen_size,
-        operatingSystem: data.operating_system
+        operatingSystem: data.operating_system,
+        graphics: data.graphics
       };
       
       setProducts([...products, newProduct]);
@@ -260,7 +264,8 @@ const AdminProducts = () => {
         memory: updatedProduct.memory,
         storage: updatedProduct.storage,
         screen_size: updatedProduct.screenSize || updatedProduct.screen_size,
-        operating_system: updatedProduct.operatingSystem || updatedProduct.operating_system
+        operating_system: updatedProduct.operatingSystem || updatedProduct.operating_system,
+        graphics: updatedProduct.graphics
       };
       
       const { error } = await supabase
