@@ -1,4 +1,3 @@
-
 import { useParams, Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -14,7 +13,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Product } from '@/types/product';
+import { Product, determineStatus } from '@/types/product';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductCard from '@/components/ProductCard';
@@ -66,12 +65,15 @@ const ProductDetail = () => {
             stock: productData.stock,
             image: productData.image || '/placeholder.svg',
             category: productData.category,
+            status: determineStatus(productData.stock),
+            isPublished: productData.is_published,
             description: productData.full_description || productData.short_description || '',
             processor: productData.processor,
             memory: productData.memory,
             storage: productData.storage,
             screenSize: productData.screen_size,
-            operatingSystem: productData.operating_system
+            operatingSystem: productData.operating_system,
+            graphics: productData.graphics
           };
           
           setProduct(formattedProduct);
@@ -86,14 +88,16 @@ const ProductDetail = () => {
             .limit(4);
             
           if (relatedData) {
-            const relatedFormatted = relatedData.map((p: any) => ({
+            const relatedFormatted: Product[] = relatedData.map((p: any) => ({
               id: p.id,
               name: p.name,
               brand: p.brand,
               price: p.price,
               stock: p.stock,
               image: p.image || '/placeholder.svg',
-              category: p.category
+              category: p.category,
+              status: determineStatus(p.stock),
+              isPublished: p.is_published
             }));
             setRelatedProducts(relatedFormatted);
           }
@@ -116,6 +120,8 @@ const ProductDetail = () => {
                 stock: foundProduct.stock,
                 image: foundProduct.image || '/placeholder.svg',
                 category: foundProduct.category,
+                status: determineStatus(foundProduct.stock),
+                isPublished: foundProduct.isPublished,
                 description: foundProduct.description || ''
               };
               setProduct(formattedProduct);
@@ -135,7 +141,9 @@ const ProductDetail = () => {
                   price: typeof p.price === 'string' ? parseFloat(p.price.replace(/[^\d.-]/g, '')) : p.price,
                   stock: p.stock,
                   image: p.image || '/placeholder.svg',
-                  category: p.category
+                  category: p.category,
+                  status: determineStatus(p.stock),
+                  isPublished: true
                 }));
                 
               setRelatedProducts(sameCategory);
@@ -269,9 +277,9 @@ const ProductDetail = () => {
             {/* Status Badge */}
             <div className="mb-4">
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                product.status === 'Em Estoque' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}>
-                {product.stock > 0 ? 'Em Estoque' : 'Sem Estoque'}
+                {product.status}
               </span>
             </div>
             

@@ -10,7 +10,7 @@ import FilterSection from "@/components/FilterSection";
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
-import { Product } from "@/types/product";
+import { Product, determineStatus } from "@/types/product";
 import { supabase } from "@/utils/supabaseClient";
 
 const Index = () => {
@@ -39,14 +39,23 @@ const Index = () => {
         
         if (productsData && productsData.length > 0) {
           // Format products to match our Product interface
-          const formattedProducts = productsData.map(product => ({
+          const formattedProducts: Product[] = productsData.map(product => ({
             id: product.id,
             name: product.name,
             brand: product.brand,
             price: product.price,
             stock: product.stock,
             image: product.image || '/placeholder.svg',
-            category: product.category
+            category: product.category,
+            status: determineStatus(product.stock),
+            isPublished: product.is_published,
+            description: product.full_description || product.short_description || '',
+            processor: product.processor,
+            memory: product.memory,
+            storage: product.storage,
+            screenSize: product.screen_size,
+            operatingSystem: product.operating_system,
+            graphics: product.graphics
           }));
           
           setProducts(formattedProducts);
@@ -80,7 +89,7 @@ const Index = () => {
             try {
               const adminProducts = JSON.parse(storedProducts);
               
-              const formattedProducts = adminProducts
+              const formattedProducts: Product[] = adminProducts
                 .filter((product: any) => product.isPublished)
                 .map((product: any) => ({
                   id: product.id,
@@ -91,7 +100,10 @@ const Index = () => {
                     : product.price,
                   stock: product.stock,
                   image: product.image || '/placeholder.svg',
-                  category: product.category
+                  category: product.category,
+                  status: determineStatus(product.stock),
+                  isPublished: true,
+                  description: product.description || ''
                 }));
               
               setProducts(formattedProducts);
