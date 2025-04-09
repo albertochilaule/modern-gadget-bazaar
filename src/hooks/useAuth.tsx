@@ -88,35 +88,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const extendedUser = currentSession.user as ExtendedUser;
         
         // Check if user is admin
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', currentSession.user.id)
-          .single()
-          .then(({ data, error }) => {
-            if (error) {
-              console.error("Error fetching profile:", error);
-              return;
-            }
-            
-            if (data) {
-              console.log("Profile data from existing session:", data);
-              extendedUser.name = data.name;
-              setIsAdmin(data.role === 'admin');
-            
-              // Update last access time
-              return supabase
-                .from('profiles')
-                .update({ last_access: new Date().toISOString() })
-                .eq('id', currentSession.user.id);
-            }
-          })
-          .then(() => {
-            setUser(extendedUser);
-          })
-          .catch(error => {
-            console.error("Error handling existing session:", error);
-          });
+        setTimeout(() => {
+          supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', currentSession.user.id)
+            .single()
+            .then(({ data, error }) => {
+              if (error) {
+                console.error("Error fetching profile:", error);
+                return;
+              }
+              
+              if (data) {
+                console.log("Profile data from existing session:", data);
+                extendedUser.name = data.name;
+                setIsAdmin(data.role === 'admin');
+              
+                // Update last access time
+                supabase
+                  .from('profiles')
+                  .update({ last_access: new Date().toISOString() })
+                  .eq('id', currentSession.user.id)
+                  .then(() => {
+                    setUser(extendedUser);
+                  })
+                  .catch(error => {
+                    console.error("Error updating last access time:", error);
+                  });
+              }
+            })
+            .catch(error => {
+              console.error("Error handling existing session:", error);
+              // Even if we fail to get profile data, we should still set the user
+              setUser(extendedUser);
+            });
+        }, 0);
       }
     }).catch(error => {
       console.error("Error getting session:", error);

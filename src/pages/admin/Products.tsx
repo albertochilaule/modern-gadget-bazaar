@@ -38,10 +38,11 @@ const AdminProducts = () => {
   const brands = [...new Set(products.map(product => product.brand))];
 
   const openEditModal = (product: Product) => {
-    setEditProduct({
+    const convertedProduct = {
       ...product,
       price: typeof product.price === 'number' ? String(product.price) : product.price
-    });
+    };
+    setEditProduct(convertedProduct);
     setIsEditModalOpen(true);
   };
 
