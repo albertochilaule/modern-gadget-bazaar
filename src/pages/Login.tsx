@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
   email: z.string().email("Digite um email válido"),
@@ -23,8 +24,10 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAuth();
+  const [loginInProgress, setLoginInProgress] = useState(false);
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -34,10 +37,34 @@ const Login = () => {
     },
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
-    const success = await login(data.email, data.password);
-    if (success) {
+  // If user is already authenticated, redirect to home page
+  useEffect(() => {
+    if (isAuthenticated) {
       navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
+
+  const onSubmit = async (data: LoginFormValues) => {
+    try {
+      setLoginInProgress(true);
+      console.log("Login attempt with:", data.email);
+      const success = await login(data.email, data.password);
+      
+      if (success) {
+        console.log("Login successful, redirecting to home page");
+        navigate("/");
+      } else {
+        console.log("Login failed");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro de login",
+        description: "Ocorreu um erro ao tentar fazer login. Por favor, tente novamente."
+      });
+    } finally {
+      setLoginInProgress(false);
     }
   };
 
@@ -106,8 +133,12 @@ const Login = () => {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full bg-century-primary hover:bg-green-600">
-                  Entrar
+                <Button 
+                  type="submit" 
+                  className="w-full bg-century-primary hover:bg-green-600"
+                  disabled={loginInProgress}
+                >
+                  {loginInProgress ? "Entrando..." : "Entrar"}
                 </Button>
               </form>
             </Form>
@@ -118,6 +149,14 @@ const Login = () => {
               <Link to="/cadastro" className="text-century-primary hover:underline">
                 Cadastre-se
               </Link>
+            </div>
+            <div className="text-center text-xs text-gray-500">
+              Credenciais para teste:
+              <ul>
+                <li>Admin: admin@example.com / senha123</li>
+                <li>Colaborador: colaborador@example.com / senha123</li>
+                <li>Cliente: cliente@example.com / senha123</li>
+              </ul>
             </div>
           </CardFooter>
         </Card>

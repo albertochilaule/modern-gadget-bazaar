@@ -4,3 +4,6 @@ import { createTypedSupabaseClient } from './supabaseTypes';
 
 // Create a typed version of the supabase client
 export const supabase = createTypedSupabaseClient(originalSupabase);
+
+// For debugging auth issues
+console.log('Supabase client initialized');

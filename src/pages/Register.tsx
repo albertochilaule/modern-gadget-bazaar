@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const registerSchema = z.object({
   name: z.string().min(3, "O nome deve ter pelo menos 3 caracteres"),
@@ -29,8 +30,17 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { register } = useAuth();
+  const [registerInProgress, setRegisterInProgress] = useState(false);
+  const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // If user is already authenticated, redirect to home page
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -43,9 +53,26 @@ const Register = () => {
   });
 
   const onSubmit = async (data: RegisterFormValues) => {
-    const success = await register(data.name, data.email, data.password);
-    if (success) {
-      navigate("/");
+    try {
+      setRegisterInProgress(true);
+      console.log("Registration attempt:", data.email);
+      const success = await register(data.name, data.email, data.password);
+      
+      if (success) {
+        console.log("Registration successful, redirecting to home page");
+        navigate("/");
+      } else {
+        console.log("Registration failed");
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro no cadastro",
+        description: "Ocorreu um erro ao tentar se cadastrar. Por favor, tente novamente."
+      });
+    } finally {
+      setRegisterInProgress(false);
     }
   };
 
@@ -149,8 +176,12 @@ const Register = () => {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full bg-century-primary hover:bg-green-600">
-                  Cadastrar
+                <Button 
+                  type="submit" 
+                  className="w-full bg-century-primary hover:bg-green-600"
+                  disabled={registerInProgress}
+                >
+                  {registerInProgress ? "Cadastrando..." : "Cadastrar"}
                 </Button>
               </form>
             </Form>
