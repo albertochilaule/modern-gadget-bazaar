@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -9,7 +10,7 @@ import FilterSection from "@/components/FilterSection";
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
-import { Product } from "@/components/ProductCard";
+import { Product } from "@/types/product";
 import { supabase } from "@/utils/supabaseClient";
 
 const Index = () => {

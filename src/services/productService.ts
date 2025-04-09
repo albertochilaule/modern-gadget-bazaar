@@ -1,6 +1,6 @@
 
 import { supabase } from '@/utils/supabaseClient';
-import { Product } from '@/components/ProductCard';
+import { Product } from '@/types/product';
 import { DbProduct } from '@/types/supabase';
 
 // Convert database product to frontend product
@@ -13,6 +13,8 @@ export const convertDbProductToProduct = (dbProduct: DbProduct): Product => {
     stock: dbProduct.stock,
     image: dbProduct.image || '/placeholder.svg',
     category: dbProduct.category,
+    status: dbProduct.stock > 0 ? (dbProduct.stock <= 3 ? 'Estoque Baixo' : 'Ativo') : 'Inativo',
+    isPublished: dbProduct.is_published,
     description: dbProduct.full_description || dbProduct.short_description || '',
     processor: dbProduct.processor,
     memory: dbProduct.memory,
@@ -100,6 +102,7 @@ export const createProduct = async (product: Omit<Product, 'id'>): Promise<Produ
       storage: product.storage,
       screen_size: product.screenSize,
       operating_system: product.operatingSystem,
+      graphics: product.graphics,
       short_description: product.description,
       full_description: product.description
     };

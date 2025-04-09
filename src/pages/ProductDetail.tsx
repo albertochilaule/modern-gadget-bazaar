@@ -14,7 +14,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Product } from '@/components/ProductCard';
+import { Product } from '@/types/product';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductCard from '@/components/ProductCard';

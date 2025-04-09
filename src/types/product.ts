@@ -10,6 +10,7 @@ export interface Product {
   isPublished: boolean;
   is_published?: boolean;
   image?: string;
+  description?: string;
   processor?: string;
   memory?: string;
   storage?: string;
