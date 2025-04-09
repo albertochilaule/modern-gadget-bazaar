@@ -183,6 +183,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       console.log("Registration successful, user:", data.user);
+      
+      // Explicitly create profile entry to avoid delays with the trigger
+      if (data.user) {
+        try {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([
+              { 
+                id: data.user.id,
+                name: name,
+                email: email,
+                role: 'cliente' // Default role for new users
+              }
+            ]);
+            
+          if (profileError) {
+            console.error("Error creating profile:", profileError);
+          }
+        } catch (profileErr) {
+          console.error("Exception creating profile:", profileErr);
+        }
+      }
+      
       toast({
         title: "Cadastro realizado com sucesso",
         description: "Sua conta foi criada e você já está conectado!"
@@ -201,12 +224,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    console.log("User logged out");
-    toast({
-      title: "Desconectado",
-      description: "Você saiu da sua conta com sucesso."
-    });
+    try {
+      await supabase.auth.signOut();
+      console.log("User logged out");
+      toast({
+        title: "Desconectado",
+        description: "Você saiu da sua conta com sucesso."
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao sair",
+        description: "Ocorreu um erro ao tentar sair da sua conta."
+      });
+    }
   };
 
   return (

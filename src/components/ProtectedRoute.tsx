@@ -10,7 +10,7 @@ type ProtectedRouteProps = {
 };
 
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -20,20 +20,20 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
         title: "Acesso negado",
         description: "Você precisa estar logado para acessar essa página.",
       });
-    } else if (requiredRole === "admin" && user?.role !== "admin") {
+    } else if (requiredRole === "admin" && !isAdmin) {
       toast({
         variant: "destructive",
         title: "Acesso negado",
         description: "Você não tem permissão para acessar essa página.",
       });
     }
-  }, [isAuthenticated, requiredRole, toast, user?.role]);
+  }, [isAuthenticated, requiredRole, toast, isAdmin]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole === "admin" && user?.role !== "admin") {
+  if (requiredRole === "admin" && !isAdmin) {
     return <Navigate to="/" replace />;
   }
 

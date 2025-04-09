@@ -35,13 +35,6 @@ const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // If user is already authenticated, redirect to home page
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate("/");
-    }
-  }, [isAuthenticated, navigate]);
-
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -51,6 +44,13 @@ const Register = () => {
       confirmPassword: "",
     },
   });
+
+  // If user is already authenticated, redirect to home page
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
 
   const onSubmit = async (data: RegisterFormValues) => {
     try {

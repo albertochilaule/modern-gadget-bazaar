@@ -29,14 +29,6 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
   // If user is already authenticated, redirect to home page
   useEffect(() => {
     if (isAuthenticated) {
@@ -151,7 +143,7 @@ const Login = () => {
               </Link>
             </div>
             <div className="text-center text-xs text-gray-500">
-              Credenciais para teste:
+              <p className="font-semibold">Credenciais para teste:</p>
               <ul>
                 <li>Admin: admin@example.com / senha123</li>
                 <li>Colaborador: colaborador@example.com / senha123</li>
