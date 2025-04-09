@@ -40,7 +40,7 @@ const AdminProducts = () => {
   const openEditModal = (product: Product) => {
     setEditProduct({
       ...product,
-      price: String(product.price)
+      price: typeof product.price === 'number' ? String(product.price) : product.price
     });
     setIsEditModalOpen(true);
   };
