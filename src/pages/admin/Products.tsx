@@ -39,7 +39,11 @@ const AdminProducts = () => {
   const brands = [...new Set(products.map(product => product.brand))];
 
   const openEditModal = (product: Product) => {
-    setEditProduct(product);
+    // Ensure price is a string when passing to the edit modal
+    setEditProduct({
+      ...product,
+      price: String(product.price)
+    });
     setIsEditModalOpen(true);
   };
 
