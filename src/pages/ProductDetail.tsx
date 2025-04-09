@@ -277,7 +277,7 @@ const ProductDetail = () => {
             {/* Status Badge */}
             <div className="mb-4">
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                product.status === 'Em Estoque' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                product.status === 'Ativo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}>
                 {product.status}
               </span>
