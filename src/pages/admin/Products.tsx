@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,7 @@ const AdminProducts = () => {
       price: String(product.price)
     };
     
-    setEditProduct(productWithStringPrice as Product);
+    setEditProduct(productWithStringPrice);
     setIsEditModalOpen(true);
   };
 

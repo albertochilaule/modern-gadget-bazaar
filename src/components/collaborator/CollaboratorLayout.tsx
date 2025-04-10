@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import CollaboratorSidebar from "./CollaboratorSidebar";
 import CollaboratorHeader from "./CollaboratorHeader";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { Toaster } from '@/components/ui/toaster';
 
 const CollaboratorLayout = () => {
   return (
@@ -16,6 +17,7 @@ const CollaboratorLayout = () => {
           </main>
         </div>
       </div>
+      <Toaster />
     </SidebarProvider>
   );
 };

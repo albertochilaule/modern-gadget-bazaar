@@ -1,13 +1,21 @@
 
+import { useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ShoppingBag, Trash2 } from "lucide-react";
+import PaymentModal from "@/components/payment/PaymentModal";
+import { useToast } from "@/hooks/use-toast";
+import { generateTransactionReference } from "@/services/mpesaService";
 
 const Cart = () => {
   const { cartItems, removeFromCart, getTotalPrice, clearCart } = useCart();
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [transactionReference, setTransactionReference] = useState("");
+  const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Helper function to format prices consistently
   const formatPrice = (price: string | number): string => {
@@ -15,6 +23,32 @@ const Cart = () => {
       ? parseFloat(price.replace(/[^\d.-]/g, ''))
       : price;
     return numericPrice.toLocaleString();
+  };
+  
+  const handleCheckout = () => {
+    // Generate a transaction reference
+    setTransactionReference(generateTransactionReference());
+    setIsPaymentModalOpen(true);
+  };
+  
+  const handlePaymentSuccess = () => {
+    // Close the modal
+    setIsPaymentModalOpen(false);
+    
+    // Show success toast
+    toast({
+      title: "Pagamento bem-sucedido",
+      description: "Seu pedido foi processado com sucesso!",
+      variant: "success",
+    });
+    
+    // Clear cart
+    clearCart();
+    
+    // Redirect to home page after a short delay
+    setTimeout(() => {
+      navigate('/');
+    }, 2000);
   };
   
   return (
@@ -113,7 +147,10 @@ const Cart = () => {
                   </div>
                 </div>
                 
-                <Button className="w-full mt-6 bg-century-primary hover:bg-green-600">
+                <Button 
+                  className="w-full mt-6 bg-century-primary hover:bg-green-600"
+                  onClick={handleCheckout}
+                >
                   Finalizar Compra
                 </Button>
               </div>
@@ -122,6 +159,15 @@ const Cart = () => {
         )}
       </main>
       <Footer />
+      
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        amount={getTotalPrice()}
+        onSuccess={handlePaymentSuccess}
+        reference={transactionReference}
+      />
     </div>
   );
 };
