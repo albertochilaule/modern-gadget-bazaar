@@ -1,6 +1,6 @@
 
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Package, Tags, Users, FileBarChart2, Settings } from "lucide-react";
+import { LayoutDashboard, Package, Tags, Users, FileBarChart2, Settings, UserCircle } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +22,7 @@ const AdminSidebar = () => {
     { icon: Users, label: "Usuários", path: "/admin/usuarios" },
     { icon: FileBarChart2, label: "Relatórios", path: "/admin/relatorios" },
     { icon: Settings, label: "Configurações", path: "/admin/configuracoes" },
+    { icon: UserCircle, label: "Meu Perfil", path: "/admin/meu-perfil" },
   ];
 
   return (

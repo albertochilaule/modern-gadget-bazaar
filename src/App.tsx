@@ -20,6 +20,7 @@ import AdminCategories from "./pages/admin/Categories";
 import AdminUsers from "./pages/admin/Users";
 import AdminReports from "./pages/admin/Reports";
 import AdminSettings from "./pages/admin/Settings";
+import AdminProfile from "./pages/admin/Profile";
 import AdminLayout from "./components/admin/AdminLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -55,6 +56,7 @@ const App = () => {
                   <Route path="usuarios" element={<AdminUsers />} />
                   <Route path="relatorios" element={<AdminReports />} />
                   <Route path="configuracoes" element={<AdminSettings />} />
+                  <Route path="meu-perfil" element={<AdminProfile />} />
                 </Route>
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

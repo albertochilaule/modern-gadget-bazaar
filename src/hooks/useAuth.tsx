@@ -14,6 +14,8 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  updateProfile: (data: Partial<Profile>) => Promise<boolean>;
+  updatePassword: (newPassword: string) => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,10 +65,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setIsCollaborator(userRole === 'colaborador');
               
                 // Update last access time
-                await supabase
-                  .from('profiles')
-                  .update({ last_access: new Date().toISOString() })
-                  .eq('id', currentSession.user.id);
+                try {
+                  await supabase
+                    .from('profiles')
+                    .update({ last_access: new Date().toISOString() })
+                    .eq('id', currentSession.user.id);
+                  console.log("Last access time updated");
+                } catch (updateError) {
+                  console.error("Error updating last access time:", updateError);
+                }
               }
               
               setUser(extendedUser);
@@ -111,17 +118,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setIsAdmin(userRole === 'admin');
                 setIsCollaborator(userRole === 'colaborador');
               
-                // Update last access time - here's the fixed part
-                supabase
-                  .from('profiles')
-                  .update({ last_access: new Date().toISOString() })
-                  .eq('id', currentSession.user.id)
-                  .then(() => {
-                    console.log("Last access time updated");
-                  })
-                  .catch((updateError) => {
-                    console.error("Error updating last access time:", updateError);
-                  });
+                // Update last access time - fixed to use proper promise handling
+                try {
+                  supabase
+                    .from('profiles')
+                    .update({ last_access: new Date().toISOString() })
+                    .eq('id', currentSession.user.id)
+                    .then(() => {
+                      console.log("Last access time updated");
+                    })
+                    .catch((updateError) => {
+                      console.error("Error updating last access time:", updateError);
+                    });
+                } catch (error) {
+                  console.error("Error updating last access time:", error);
+                }
               }
               
               // Set user regardless of profile data success
@@ -239,6 +250,81 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const updateProfile = async (data: Partial<Profile>): Promise<boolean> => {
+    try {
+      if (!user) return false;
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update(data)
+        .eq('id', user.id);
+        
+      if (error) {
+        console.error("Profile update error:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro na atualização",
+          description: "Não foi possível atualizar o perfil."
+        });
+        return false;
+      }
+      
+      // Update local user state if name was changed
+      if (data.name && user) {
+        setUser({
+          ...user,
+          name: data.name
+        });
+      }
+      
+      toast({
+        title: "Perfil atualizado",
+        description: "Suas informações foram atualizadas com sucesso."
+      });
+      return true;
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro na atualização",
+        description: "Ocorreu um erro ao atualizar o perfil."
+      });
+      return false;
+    }
+  };
+  
+  const updatePassword = async (newPassword: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.updateUser({ 
+        password: newPassword 
+      });
+      
+      if (error) {
+        console.error("Password update error:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro na atualização da senha",
+          description: error.message || "Não foi possível atualizar a senha."
+        });
+        return false;
+      }
+      
+      toast({
+        title: "Senha atualizada",
+        description: "Sua senha foi atualizada com sucesso."
+      });
+      return true;
+    } catch (error: any) {
+      console.error("Password update exception:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro na atualização da senha",
+        description: error.message || "Ocorreu um erro ao atualizar a senha."
+      });
+      return false;
+    }
+  };
+
   const logout = async () => {
     try {
       await supabase.auth.signOut();
@@ -266,7 +352,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logout, 
       isAuthenticated: !!user,
       isAdmin, 
-      isCollaborator 
+      isCollaborator,
+      updateProfile,
+      updatePassword
     }}>
       {children}
     </AuthContext.Provider>
