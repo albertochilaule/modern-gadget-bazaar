@@ -52,7 +52,12 @@ const Login = () => {
       
       if (success) {
         console.log("Login successful, redirecting to home page");
-        navigate("/");
+        // Redirect admins to admin dashboard
+        if (data.email === "admin@centurytech.com") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/");
+        }
       } else {
         console.log("Login failed");
       }

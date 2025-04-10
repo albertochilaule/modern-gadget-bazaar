@@ -43,12 +43,7 @@ const AdminProducts = () => {
       price: typeof product.price === 'number' ? String(product.price) : product.price
     };
     
-    const convertedProduct: Product = {
-      ...productWithStringPrice,
-      price: String(productWithStringPrice.price)
-    };
-    
-    setEditProduct(convertedProduct);
+    setEditProduct(productWithStringPrice as Product);
     setIsEditModalOpen(true);
   };
 

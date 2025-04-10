@@ -1,178 +1,123 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/utils/supabaseClient";
-import { Session } from "@supabase/supabase-js";
-import { ExtendedUser, Profile } from "@/types/supabase";
+import { ExtendedUser } from "@/types/supabase";
 
 type AuthContextType = {
   user: ExtendedUser | null;
-  session: Session | null;
+  session: any | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
   isCollaborator: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  updateProfile: (data: Partial<Profile>) => Promise<boolean>;
+  updateProfile: (data: Partial<any>) => Promise<boolean>;
   updatePassword: (newPassword: string) => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Local user accounts for offline development
+const LOCAL_USERS = [
+  {
+    id: "admin-id-123",
+    name: "Admin User",
+    email: "admin@centurytech.com",
+    password: "senha123",
+    role: "admin",
+  },
+  {
+    id: "colab-id-456",
+    name: "Colaborador",
+    email: "colaborador@centurytech.com",
+    password: "senha123",
+    role: "colaborador",
+  },
+  {
+    id: "client-id-789",
+    name: "Cliente",
+    email: "cliente@centurytech.com",
+    password: "senha123",
+    role: "cliente",
+  }
+];
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<ExtendedUser | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<any | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isCollaborator, setIsCollaborator] = useState<boolean>(false);
   const { toast } = useToast();
   
-  // Check for existing session and set up auth state listener
+  // Check for existing session in localStorage
   useEffect(() => {
-    console.log("Auth provider initialized, setting up listeners");
+    console.log("Auth provider initialized, checking localStorage");
     
-    // Set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        console.log("Auth state change event:", event);
-        setSession(currentSession);
+    // Check if we have a stored session
+    const storedSession = localStorage.getItem('centurytech_session');
+    if (storedSession) {
+      try {
+        const sessionData = JSON.parse(storedSession);
+        setSession(sessionData);
         
-        if (currentSession?.user) {
-          // Create extended user with profile data
-          const extendedUser = currentSession.user as ExtendedUser;
-          console.log("User authenticated:", extendedUser.email);
+        // Create extended user from stored data
+        const storedUser = sessionData.user;
+        if (storedUser) {
+          console.log("Restored user session:", storedUser.email);
           
-          // Check if user is admin with a setTimeout to avoid Supabase deadlock
-          setTimeout(async () => {
-            try {
-              const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', currentSession.user.id)
-                .single();
-                
-              if (error) {
-                console.error("Error fetching profile:", error);
-                return;
-              }
-              
-              if (data) {
-                console.log("Profile data fetched:", data);
-                extendedUser.name = data.name;
-                const userRole = data.role;
-                console.log("User role:", userRole);
-                setIsAdmin(userRole === 'admin');
-                setIsCollaborator(userRole === 'colaborador');
-              
-                // Update last access time
-                try {
-                  await supabase
-                    .from('profiles')
-                    .update({ last_access: new Date().toISOString() })
-                    .eq('id', currentSession.user.id);
-                  console.log("Last access time updated");
-                } catch (updateError) {
-                  console.error("Error updating last access time:", updateError);
-                }
-              }
-              
-              setUser(extendedUser);
-            } catch (error) {
-              console.error("Error in auth state change handler:", error);
-            }
-          }, 0);
-        } else {
-          setUser(null);
-          setIsAdmin(false);
-          setIsCollaborator(false);
+          setIsAdmin(storedUser.role === 'admin');
+          setIsCollaborator(storedUser.role === 'colaborador');
+          setUser(storedUser);
         }
+      } catch (error) {
+        console.error("Error parsing stored session:", error);
+        localStorage.removeItem('centurytech_session');
       }
-    );
-    
-    // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      console.log("Existing session check:", currentSession ? "Session exists" : "No session");
-      setSession(currentSession);
-      
-      if (currentSession?.user) {
-        // Create extended user with profile data
-        const extendedUser = currentSession.user as ExtendedUser;
-        
-        // Check if user is admin
-        setTimeout(() => {
-          supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', currentSession.user.id)
-            .single()
-            .then(({ data, error }) => {
-              if (error) {
-                console.error("Error fetching profile:", error);
-                return;
-              }
-              
-              if (data) {
-                console.log("Profile data from existing session:", data);
-                extendedUser.name = data.name;
-                const userRole = data.role;
-                setIsAdmin(userRole === 'admin');
-                setIsCollaborator(userRole === 'colaborador');
-              
-                // Update last access time - fixed to use proper promise handling
-                try {
-                  supabase
-                    .from('profiles')
-                    .update({ last_access: new Date().toISOString() })
-                    .eq('id', currentSession.user.id)
-                    .then(() => {
-                      console.log("Last access time updated");
-                    })
-                    .catch((updateError) => {
-                      console.error("Error updating last access time:", updateError);
-                    });
-                } catch (error) {
-                  console.error("Error updating last access time:", error);
-                }
-              }
-              
-              // Set user regardless of profile data success
-              setUser(extendedUser);
-            })
-            .catch(error => {
-              console.error("Error handling existing session:", error);
-              // Even if we fail to get profile data, we should still set the user
-              setUser(extendedUser);
-            });
-        }, 0);
-      }
-    }).catch(error => {
-      console.error("Error getting session:", error);
-    });
-    
-    return () => {
-      subscription.unsubscribe();
-    };
+    }
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      console.log("Attempting login for:", email);
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log("Attempting local login for:", email);
       
-      if (error) {
-        console.error("Login error:", error);
+      // Find matching local user
+      const matchedUser = LOCAL_USERS.find(
+        (u) => u.email === email && u.password === password
+      );
+      
+      if (!matchedUser) {
+        console.error("Login error: Invalid credentials");
         toast({
           variant: "destructive",
           title: "Erro de autenticação",
-          description: error.message || "Email ou senha incorretos.",
+          description: "Email ou senha incorretos.",
         });
         return false;
       }
       
-      console.log("Login successful, session:", data.session);
+      // Create session object
+      const newSession = {
+        user: {
+          ...matchedUser,
+        },
+        access_token: "local-token-123",
+        created_at: new Date().toISOString(),
+      };
+      
+      // Set session state
+      setSession(newSession);
+      setUser(matchedUser);
+      setIsAdmin(matchedUser.role === 'admin');
+      setIsCollaborator(matchedUser.role === 'colaborador');
+      
+      // Store in localStorage
+      localStorage.setItem('centurytech_session', JSON.stringify(newSession));
+      
+      console.log("Login successful, session:", newSession);
       toast({
         title: "Login bem-sucedido",
-        description: "Bem-vindo de volta!",
+        description: "Bem-vindo de volta, " + matchedUser.name + "!",
       });
       return true;
     } catch (error: any) {
@@ -188,57 +133,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (name: string, email: string, password: string): Promise<boolean> => {
     try {
-      console.log("Attempting registration for:", email);
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-          data: {
-            name: name,
-          }
-        } 
-      });
-      
-      if (error) {
-        console.error("Registration error:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro no cadastro",
-          description: error.message || "Este e-mail já está em uso.",
-        });
-        return false;
-      }
-      
-      console.log("Registration successful, user:", data.user);
-      
-      // Explicitly create profile entry to avoid delays with the trigger
-      if (data.user) {
-        try {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([
-              { 
-                id: data.user.id,
-                name: name,
-                email: email,
-                role: 'cliente' // Default role for new users
-              }
-            ]);
-            
-          if (profileError) {
-            console.error("Error creating profile:", profileError);
-          }
-        } catch (profileErr) {
-          console.error("Exception creating profile:", profileErr);
-        }
-      }
-      
+      console.log("Local registration not supported in offline mode");
       toast({
-        title: "Cadastro realizado com sucesso",
-        description: "Sua conta foi criada e você já está conectado!"
+        variant: "destructive",
+        title: "Funcionalidade não disponível",
+        description: "O registro de novos usuários está desativado no modo offline."
       });
-      
-      return true;
+      return false;
     } catch (error: any) {
       console.error("Registration exception:", error);
       toast({
@@ -250,31 +151,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const updateProfile = async (data: Partial<Profile>): Promise<boolean> => {
+  const updateProfile = async (data: Partial<any>): Promise<boolean> => {
     try {
       if (!user) return false;
       
-      const { error } = await supabase
-        .from('profiles')
-        .update(data)
-        .eq('id', user.id);
-        
-      if (error) {
-        console.error("Profile update error:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro na atualização",
-          description: "Não foi possível atualizar o perfil."
-        });
-        return false;
-      }
+      // Update local user data
+      const updatedUser = {
+        ...user,
+        ...data
+      };
       
-      // Update local user state if name was changed
-      if (data.name && user) {
-        setUser({
-          ...user,
-          name: data.name
-        });
+      setUser(updatedUser);
+      
+      // Update session in localStorage
+      if (session) {
+        const updatedSession = {
+          ...session,
+          user: updatedUser
+        };
+        setSession(updatedSession);
+        localStorage.setItem('centurytech_session', JSON.stringify(updatedSession));
       }
       
       toast({
@@ -282,7 +178,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: "Suas informações foram atualizadas com sucesso."
       });
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({
         variant: "destructive",
@@ -295,23 +191,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const updatePassword = async (newPassword: string): Promise<boolean> => {
     try {
-      const { error } = await supabase.auth.updateUser({ 
-        password: newPassword 
-      });
+      if (!user) return false;
       
-      if (error) {
-        console.error("Password update error:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro na atualização da senha",
-          description: error.message || "Não foi possível atualizar a senha."
-        });
-        return false;
-      }
-      
+      // In local mode, we don't actually update passwords
       toast({
         title: "Senha atualizada",
-        description: "Sua senha foi atualizada com sucesso."
+        description: "Sua senha foi atualizada com sucesso (modo simulado)."
       });
       return true;
     } catch (error: any) {
@@ -327,13 +212,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      // Clear local storage and state
+      localStorage.removeItem('centurytech_session');
+      setUser(null);
+      setSession(null);
+      setIsAdmin(false);
+      setIsCollaborator(false);
+      
       console.log("User logged out");
       toast({
         title: "Desconectado",
         description: "Você saiu da sua conta com sucesso."
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Logout error:", error);
       toast({
         variant: "destructive",
