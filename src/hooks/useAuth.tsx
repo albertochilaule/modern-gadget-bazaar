@@ -10,6 +10,7 @@ type AuthContextType = {
   session: Session | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isCollaborator: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -21,6 +22,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [isCollaborator, setIsCollaborator] = useState<boolean>(false);
   const { toast } = useToast();
   
   // Check for existing session and set up auth state listener
@@ -58,6 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const userRole = data.role;
                 console.log("User role:", userRole);
                 setIsAdmin(userRole === 'admin');
+                setIsCollaborator(userRole === 'colaborador');
               
                 // Update last access time
                 await supabase
@@ -74,6 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           setUser(null);
           setIsAdmin(false);
+          setIsCollaborator(false);
         }
       }
     );
@@ -103,20 +107,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               if (data) {
                 console.log("Profile data from existing session:", data);
                 extendedUser.name = data.name;
-                setIsAdmin(data.role === 'admin');
+                const userRole = data.role;
+                setIsAdmin(userRole === 'admin');
+                setIsCollaborator(userRole === 'colaborador');
               
-                // Update last access time
+                // Update last access time - and handle promises correctly
                 supabase
                   .from('profiles')
                   .update({ last_access: new Date().toISOString() })
                   .eq('id', currentSession.user.id)
                   .then(() => {
-                    setUser(extendedUser);
+                    console.log("Last access time updated");
                   })
-                  .catch(error => {
+                  .catch((error) => {
                     console.error("Error updating last access time:", error);
                   });
               }
+              
+              // Set user regardless of profile data success
+              setUser(extendedUser);
             })
             .catch(error => {
               console.error("Error handling existing session:", error);
@@ -256,7 +265,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       register, 
       logout, 
       isAuthenticated: !!user,
-      isAdmin: isAdmin 
+      isAdmin, 
+      isCollaborator 
     }}>
       {children}
     </AuthContext.Provider>
