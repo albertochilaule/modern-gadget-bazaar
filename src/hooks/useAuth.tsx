@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           setIsAdmin(storedUser.role === 'admin');
           setIsCollaborator(storedUser.role === 'colaborador');
-          setUser(storedUser);
+          setUser(storedUser as ExtendedUser);
         }
       } catch (error) {
         console.error("Error parsing stored session:", error);
@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Set session state
       setSession(newSession);
-      setUser(matchedUser);
+      setUser(matchedUser as ExtendedUser);
       setIsAdmin(matchedUser.role === 'admin');
       setIsCollaborator(matchedUser.role === 'colaborador');
       

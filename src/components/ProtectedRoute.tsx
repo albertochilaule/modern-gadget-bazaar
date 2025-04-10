@@ -6,11 +6,11 @@ import { ReactNode, useEffect } from "react";
 
 type ProtectedRouteProps = {
   children: ReactNode;
-  requiredRole?: "admin" | "user";
+  requiredRole?: "admin" | "colaborador" | "user";
 };
 
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, isCollaborator } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -26,14 +26,24 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
         title: "Acesso negado",
         description: "Você não tem permissão para acessar essa página.",
       });
+    } else if (requiredRole === "colaborador" && !isCollaborator) {
+      toast({
+        variant: "destructive",
+        title: "Acesso negado",
+        description: "Você não tem permissão para acessar essa página.",
+      });
     }
-  }, [isAuthenticated, requiredRole, toast, isAdmin]);
+  }, [isAuthenticated, requiredRole, toast, isAdmin, isCollaborator]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   if (requiredRole === "admin" && !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+  
+  if (requiredRole === "colaborador" && !isCollaborator) {
     return <Navigate to="/" replace />;
   }
 
