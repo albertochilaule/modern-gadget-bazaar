@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,7 +39,8 @@ const AdminProducts = () => {
   const brands = [...new Set(products.map(product => product.brand))];
 
   const openEditModal = (product: Product) => {
-    const convertedProduct = {
+    // Ensure price is a string when setting editProduct
+    const convertedProduct: Product = {
       ...product,
       price: typeof product.price === 'number' ? String(product.price) : product.price
     };

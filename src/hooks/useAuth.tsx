@@ -111,7 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setIsAdmin(userRole === 'admin');
                 setIsCollaborator(userRole === 'colaborador');
               
-                // Update last access time - and handle promises correctly
+                // Update last access time - here's the fixed part
                 supabase
                   .from('profiles')
                   .update({ last_access: new Date().toISOString() })
@@ -119,8 +119,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   .then(() => {
                     console.log("Last access time updated");
                   })
-                  .catch((error) => {
-                    console.error("Error updating last access time:", error);
+                  .catch((updateError) => {
+                    console.error("Error updating last access time:", updateError);
                   });
               }
               
