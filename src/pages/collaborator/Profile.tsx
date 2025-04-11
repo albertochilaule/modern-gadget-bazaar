@@ -1,11 +1,13 @@
+
 import React, { useState } from 'react';
 import CollaboratorLayout from '@/components/collaborator/CollaboratorLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const Profile = () => {
   const { user, updateProfile, updatePassword } = useAuth();
@@ -99,12 +101,12 @@ const Profile = () => {
             <div className="flex items-center space-x-4">
               <Avatar>
                 <AvatarImage src={`https://avatar.vercel.sh/${user?.email}.png`} />
-                <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
+                <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-sm font-medium leading-none">{user?.name}</p>
+                <p className="text-sm font-medium leading-none">{user?.name || 'Usuário'}</p>
                 <p className="text-sm text-muted-foreground">
-                  {user?.email}
+                  {user?.email || 'email@exemplo.com'}
                 </p>
               </div>
             </div>
@@ -121,7 +123,14 @@ const Profile = () => {
                   />
                 </div>
                 <Button disabled={isLoading} type="submit">
-                  {isLoading ? 'Atualizando...' : 'Atualizar Perfil'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Atualizando...
+                    </>
+                  ) : (
+                    'Atualizar Perfil'
+                  )}
                 </Button>
               </form>
             </div>
@@ -156,7 +165,14 @@ const Profile = () => {
                   />
                 </div>
                 <Button disabled={isPasswordLoading} type="submit">
-                  {isPasswordLoading ? 'Atualizando...' : 'Atualizar Senha'}
+                  {isPasswordLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Atualizando...
+                    </>
+                  ) : (
+                    'Atualizar Senha'
+                  )}
                 </Button>
               </form>
             </div>

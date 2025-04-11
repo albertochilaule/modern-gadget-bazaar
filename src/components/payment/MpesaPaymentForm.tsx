@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { processPayment, isPaymentSuccessful, getResponseMessage } from "@/services/mpesaService";
-import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Phone } from "lucide-react";
 
 interface MpesaPaymentFormProps {
   amount: number;
@@ -22,13 +22,22 @@ const MpesaPaymentForm = ({ amount, onSuccess, onError, reference }: MpesaPaymen
   const [statusMessage, setStatusMessage] = useState("");
   const { toast } = useToast();
 
+  const isValidPhoneNumber = (phone: string): boolean => {
+    // Basic validation for Mozambique phone numbers
+    const digitsOnly = phone.replace(/\D/g, '');
+    if (digitsOnly.startsWith('258')) {
+      return digitsOnly.length === 12;
+    }
+    return digitsOnly.length === 9;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!phoneNumber) {
+    if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
       toast({
         title: "Erro no pagamento",
-        description: "Por favor, insira um número de telefone válido",
+        description: "Por favor, insira um número de telefone válido (ex: 84XXXXXXX ou 258XXXXXXXXX)",
         variant: "destructive",
       });
       return;
@@ -36,6 +45,7 @@ const MpesaPaymentForm = ({ amount, onSuccess, onError, reference }: MpesaPaymen
     
     setIsProcessing(true);
     setPaymentStatus("processing");
+    setStatusMessage("Processando seu pagamento via M-Pesa...");
     
     try {
       // Process the payment
@@ -44,7 +54,7 @@ const MpesaPaymentForm = ({ amount, onSuccess, onError, reference }: MpesaPaymen
       // Check if payment was successful
       if (isPaymentSuccessful(response)) {
         setPaymentStatus("success");
-        setStatusMessage("Pagamento processado com sucesso! Por favor, verifique seu telefone para confirmar a transação.");
+        setStatusMessage("Pagamento iniciado com sucesso! Por favor, verifique seu telefone para confirmar a transação.");
         toast({
           title: "Pagamento iniciado",
           description: "Por favor, confirme o pagamento no seu telefone",
@@ -97,16 +107,20 @@ const MpesaPaymentForm = ({ amount, onSuccess, onError, reference }: MpesaPaymen
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="phone">Número de Telefone</Label>
-              <Input
-                id="phone"
-                type="text"
-                placeholder="Ex: 84XXXXXXX ou 258XXXXXXXXX"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                disabled={isProcessing}
-              />
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Input
+                  id="phone"
+                  type="text"
+                  placeholder="Ex: 84XXXXXXX ou 258XXXXXXXXX"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  disabled={isProcessing}
+                  className="pl-10"
+                />
+              </div>
               <p className="text-sm text-muted-foreground">
-                Insira seu número de telefone M-Pesa registrado
+                Insira seu número de telefone M-Pesa registrado (ex: 84XXXXXXX)
               </p>
             </div>
             
@@ -138,7 +152,7 @@ const MpesaPaymentForm = ({ amount, onSuccess, onError, reference }: MpesaPaymen
         <Button 
           className="w-full bg-green-600 hover:bg-green-700" 
           onClick={handleSubmit}
-          disabled={isProcessing || phoneNumber.length < 9}
+          disabled={isProcessing || !isValidPhoneNumber(phoneNumber)}
         >
           {isProcessing ? (
             <>

@@ -1,3 +1,4 @@
+
 // M-Pesa Payment Service
 // This service handles communication with the M-Pesa API
 
@@ -48,6 +49,15 @@ export const processPayment = async (
     // Format phone number to ensure it has the country code
     const formattedPhone = formatPhoneNumber(phoneNumber);
     
+    // Validate phone number format
+    if (!isValidMozambiqueNumber(formattedPhone)) {
+      console.error("Invalid phone number format:", formattedPhone);
+      return {
+        output_ResponseCode: "INS-2051",
+        output_ResponseDesc: "Número de telefone inválido"
+      };
+    }
+    
     // Prepare the payment request
     const paymentData: MpesaPaymentRequest = {
       input_TransactionReference: reference || generateTransactionReference(),
@@ -69,6 +79,25 @@ export const processPayment = async (
       },
       body: JSON.stringify(paymentData)
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("M-Pesa API error:", response.status, errorText);
+      
+      // Try to parse the error response
+      try {
+        const errorData = JSON.parse(errorText);
+        return {
+          output_ResponseCode: errorData.output_ResponseCode || "INS-1",
+          output_ResponseDesc: errorData.output_ResponseDesc || `Error ${response.status}: ${response.statusText}`
+        };
+      } catch (e) {
+        return {
+          output_ResponseCode: "INS-1",
+          output_ResponseDesc: `Error ${response.status}: ${response.statusText}`
+        };
+      }
+    }
 
     // Parse the response
     const responseData = await response.json();
@@ -105,6 +134,18 @@ const formatPhoneNumber = (phoneNumber: string): string => {
   
   // Otherwise return the original digits
   return digitsOnly;
+};
+
+/**
+ * Check if a phone number is valid for Mozambique
+ * @param phoneNumber Phone number to validate
+ * @returns boolean indicating if the number is valid
+ */
+const isValidMozambiqueNumber = (phoneNumber: string): boolean => {
+  // Mozambique phone numbers: 258 followed by 9 digits
+  // Valid prefixes for mobile operators: 82, 83, 84, 85, 86, 87
+  const validPattern = /^258(8[2-7])\d{7}$/;
+  return validPattern.test(phoneNumber);
 };
 
 /**

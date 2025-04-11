@@ -20,12 +20,12 @@ const CollaboratorHeader = () => {
   };
 
   const handlePaymentSuccess = () => {
-    setIsPaymentModalOpen(false);
     toast({
       title: "Pagamento processado",
       description: "O pagamento rápido foi processado com sucesso!",
       variant: "success",
     });
+    setIsPaymentModalOpen(false);
   };
 
   return (
