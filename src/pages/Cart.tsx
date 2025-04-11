@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, RefreshCw, ShoppingBag, Trash2 } from "lucide-react";
 import PaymentModal from "@/components/payment/PaymentModal";
+import { CustomerData } from "@/components/payment/CustomerDataForm";
 import { useToast } from "@/hooks/use-toast";
 import { generateTransactionReference } from "@/services/mpesaService";
 
@@ -23,6 +24,7 @@ const Cart = () => {
   } = useCart();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [transactionReference, setTransactionReference] = useState("");
+  const [customerData, setCustomerData] = useState<CustomerData | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   
