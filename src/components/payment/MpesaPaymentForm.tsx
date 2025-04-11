@@ -13,9 +13,10 @@ interface MpesaPaymentFormProps {
   onSuccess?: () => void;
   onError?: () => void;
   reference?: string;
+  onPaymentStart?: () => void;
 }
 
-const MpesaPaymentForm = ({ amount, onSuccess, onError, reference }: MpesaPaymentFormProps) => {
+const MpesaPaymentForm = ({ amount, onSuccess, onError, reference, onPaymentStart }: MpesaPaymentFormProps) => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
@@ -46,6 +47,11 @@ const MpesaPaymentForm = ({ amount, onSuccess, onError, reference }: MpesaPaymen
     setIsProcessing(true);
     setPaymentStatus("processing");
     setStatusMessage("Processando seu pagamento via M-Pesa...");
+    
+    // Call the onPaymentStart callback if provided
+    if (onPaymentStart) {
+      onPaymentStart();
+    }
     
     try {
       // Process the payment

@@ -4,6 +4,7 @@ export interface Product {
   name: string;
   brand: string;
   category: string;
+  category_id?: string | number; // Add this field to fix the error
   price: string | number;
   stock: number;
   status: 'Ativo' | 'Inativo' | 'Estoque Baixo';

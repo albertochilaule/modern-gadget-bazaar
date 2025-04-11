@@ -1,7 +1,14 @@
 
+// Add the missing getAllProducts function at the top of the file
+
 import { supabase } from '@/utils/supabaseClient';
 import { Product } from '@/types/product';
 import { DbProduct } from '@/types/supabase';
+
+// Add this function
+export const getAllProducts = async (): Promise<Product[]> => {
+  return fetchProducts(false);
+};
 
 // Convert database product to frontend product
 export const convertDbProductToProduct = (dbProduct: DbProduct): Product => {
