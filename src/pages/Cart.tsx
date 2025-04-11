@@ -5,17 +5,30 @@ import Footer from "@/components/Footer";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ShoppingBag, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, RefreshCw, ShoppingBag, Trash2 } from "lucide-react";
 import PaymentModal from "@/components/payment/PaymentModal";
 import { useToast } from "@/hooks/use-toast";
 import { generateTransactionReference } from "@/services/mpesaService";
 
 const Cart = () => {
-  const { cartItems, removeFromCart, getTotalPrice, clearCart } = useCart();
+  const { 
+    cartItems, 
+    removeFromCart, 
+    getTotalPrice, 
+    clearCart, 
+    getShippingFee,
+    userLocation,
+    isLoadingLocation,
+    refreshLocation
+  } = useCart();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [transactionReference, setTransactionReference] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  const shippingFee = getShippingFee();
+  const subtotal = getTotalPrice();
+  const total = subtotal + shippingFee;
   
   // Helper function to format prices consistently
   const formatPrice = (price: string | number): string => {
@@ -131,19 +144,60 @@ const Cart = () => {
               <div className="bg-white p-6 rounded-lg shadow-md">
                 <h2 className="text-lg font-semibold mb-4">Resumo do Pedido</h2>
                 
+                {/* Location information */}
+                <div className="mb-4 p-3 bg-gray-50 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <MapPin className="text-century-primary mr-2" size={18} />
+                      <span className="text-sm font-medium">Localização: </span>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-8 w-8 p-0" 
+                      onClick={refreshLocation}
+                      disabled={isLoadingLocation}
+                    >
+                      <RefreshCw size={14} className={`${isLoadingLocation ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
+                  
+                  <div className="mt-1 text-sm font-semibold">
+                    {isLoadingLocation ? (
+                      <span className="text-gray-500">Detectando localização...</span>
+                    ) : (
+                      <span className={userLocation.isMaputo ? 'text-green-600' : 'text-gray-700'}>
+                        Província de {userLocation.province}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {!isLoadingLocation && (
+                    <div className="mt-1 text-xs">
+                      {userLocation.isMaputo ? (
+                        <span className="text-green-600">✓ Entrega gratuita disponível</span>
+                      ) : (
+                        <span className="text-gray-500">Entrega com taxa fixa de 1000 MT</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-600">Subtotal</span>
-                    <span>MZN {getTotalPrice().toLocaleString()}</span>
+                    <span>MZN {formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-600">Entrega</span>
-                    <span className="text-century-primary">Grátis</span>
+                    <span className={userLocation.isMaputo ? "text-century-primary" : ""}>
+                      {userLocation.isMaputo ? 'Grátis' : `MZN ${formatPrice(shippingFee)}`}
+                    </span>
                   </div>
                   
                   <div className="flex justify-between font-bold text-lg mt-4 pt-4 border-t border-gray-200">
                     <span>Total</span>
-                    <span>MZN {getTotalPrice().toLocaleString()}</span>
+                    <span>MZN {formatPrice(total)}</span>
                   </div>
                 </div>
                 
@@ -164,7 +218,7 @@ const Cart = () => {
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
-        amount={getTotalPrice()}
+        amount={total}
         onSuccess={handlePaymentSuccess}
         reference={transactionReference}
       />

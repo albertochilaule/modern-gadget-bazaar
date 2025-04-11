@@ -3,10 +3,13 @@ import { useCart } from '@/hooks/useCart';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2 } from 'lucide-react';
+import { MapPin, Trash2 } from 'lucide-react';
 
 const CartDropdown = () => {
-  const { cartItems, removeFromCart, getTotalPrice } = useCart();
+  const { cartItems, removeFromCart, getTotalPrice, getShippingFee, userLocation } = useCart();
+  const shippingFee = getShippingFee();
+  const subtotal = getTotalPrice();
+  const total = subtotal + shippingFee;
 
   // Helper function to format prices consistently
   const formatPrice = (price: string | number): string => {
@@ -56,9 +59,24 @@ const CartDropdown = () => {
       
       {cartItems.length > 0 && (
         <div className="p-3 border-t border-gray-200">
-          <div className="flex justify-between my-2">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs text-gray-500">Subtotal:</span>
+            <span className="text-sm">MZN {formatPrice(subtotal)}</span>
+          </div>
+          
+          <div className="flex justify-between items-center mb-1">
+            <div className="flex items-center">
+              <MapPin className="mr-1" size={12} />
+              <span className="text-xs text-gray-500">Entrega {userLocation.province}:</span>
+            </div>
+            <span className={`text-sm ${userLocation.isMaputo ? "text-green-600" : ""}`}>
+              {userLocation.isMaputo ? 'Grátis' : `MZN ${formatPrice(shippingFee)}`}
+            </span>
+          </div>
+          
+          <div className="flex justify-between my-2 pt-2 border-t border-gray-100">
             <span className="font-semibold">Total:</span>
-            <span className="font-bold">MZN {getTotalPrice().toLocaleString()}</span>
+            <span className="font-bold">MZN {formatPrice(total)}</span>
           </div>
           
           <Link to="/carrinho">

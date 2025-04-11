@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import MpesaPaymentForm from "./MpesaPaymentForm";
@@ -67,6 +68,7 @@ const PaymentModal = ({
             onSuccess={handlePaymentSuccess}
             onError={handlePaymentError}
             reference={reference}
+            onPaymentStart={handlePaymentStart}
           />
         </div>
       </DialogContent>
