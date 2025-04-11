@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
@@ -10,8 +9,8 @@ import FilterSection from "@/components/FilterSection";
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
-import { Product, determineStatus } from "@/types/product";
-import { supabase } from "@/utils/supabaseClient";
+import { Product } from "@/types/product";
+import { fetchProducts } from "@/services/productService";
 
 const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -22,130 +21,48 @@ const Index = () => {
   const [maxPrice, setMaxPrice] = useState<number>(100000);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      
-      try {
-        // Fetch from Supabase
-        const { data: productsData, error } = await supabase
-          .from('products')
-          .select('*')
-          .eq('is_published', true);
-          
-        if (error) {
-          throw error;
-        }
-        
-        if (productsData && productsData.length > 0) {
-          // Format products to match our Product interface
-          const formattedProducts: Product[] = productsData.map(product => ({
-            id: product.id,
-            name: product.name,
-            brand: product.brand,
-            price: product.price,
-            stock: product.stock,
-            image: product.image || '/placeholder.svg',
-            category: product.category,
-            status: determineStatus(product.stock),
-            isPublished: product.is_published,
-            description: product.full_description || product.short_description || '',
-            processor: product.processor,
-            memory: product.memory,
-            storage: product.storage,
-            screenSize: product.screen_size,
-            operatingSystem: product.operating_system,
-            graphics: product.graphics
-          }));
-          
-          setProducts(formattedProducts);
-          setFilteredProducts(formattedProducts);
-          
-          // Extract unique categories and brands
-          const uniqueCategories = Array.from(
-            new Set(formattedProducts.map(product => product.category || '').filter(Boolean))
-          ) as string[];
-          setCategories(uniqueCategories);
-          
-          const uniqueBrands = Array.from(
-            new Set(formattedProducts.map(product => product.brand))
-          ) as string[];
-          setBrands(uniqueBrands);
-          
-          // Calculate max price
-          const highestPrice = Math.max(
-            ...formattedProducts.map(product => {
-              const numPrice = typeof product.price === 'string'
-                ? parseFloat(product.price.replace(/[^\d.-]/g, ''))
-                : product.price;
-              return numPrice;
-            })
-          );
-          setMaxPrice(highestPrice);
-        } else {
-          // Fallback to localStorage if no products in Supabase
-          const storedProducts = localStorage.getItem('adminProducts');
-          if (storedProducts) {
-            try {
-              const adminProducts = JSON.parse(storedProducts);
-              
-              const formattedProducts: Product[] = adminProducts
-                .filter((product: any) => product.isPublished)
-                .map((product: any) => ({
-                  id: product.id,
-                  name: product.name,
-                  brand: product.brand,
-                  price: typeof product.price === 'string' 
-                    ? parseFloat(product.price.replace(/[^\d.-]/g, '')) 
-                    : product.price,
-                  stock: product.stock,
-                  image: product.image || '/placeholder.svg',
-                  category: product.category,
-                  status: determineStatus(product.stock),
-                  isPublished: true,
-                  description: product.description || ''
-                }));
-              
-              setProducts(formattedProducts);
-              setFilteredProducts(formattedProducts);
-              
-              // Extract unique categories and brands
-              const uniqueCategories = Array.from(
-                new Set(formattedProducts.map(product => product.category || '').filter(Boolean))
-              ) as string[];
-              setCategories(uniqueCategories);
-              
-              const uniqueBrands = Array.from(
-                new Set(formattedProducts.map(product => product.brand))
-              ) as string[];
-              setBrands(uniqueBrands);
-              
-              // Calculate max price
-              const highestPrice = Math.max(
-                ...formattedProducts.map(product => {
-                  const numPrice = typeof product.price === 'string'
-                    ? parseFloat(product.price.replace(/[^\d.-]/g, ''))
-                    : product.price;
-                  return numPrice;
-                })
-              );
-              setMaxPrice(highestPrice);
-            } catch (e) {
-              console.error("Error parsing stored products:", e);
-              setProducts([]);
-              setFilteredProducts([]);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadProducts = useCallback(async () => {
+    setLoading(true);
     
-    fetchProducts();
+    try {
+      // Fetch published products only for the main store page
+      const fetchedProducts = await fetchProducts(true);
+      
+      setProducts(fetchedProducts);
+      setFilteredProducts(fetchedProducts);
+      
+      // Extract unique categories and brands
+      const uniqueCategories = Array.from(
+        new Set(fetchedProducts.map(product => product.category || '').filter(Boolean))
+      ) as string[];
+      setCategories(uniqueCategories);
+      
+      const uniqueBrands = Array.from(
+        new Set(fetchedProducts.map(product => product.brand))
+      ) as string[];
+      setBrands(uniqueBrands);
+      
+      // Calculate max price
+      const highestPrice = Math.max(
+        ...fetchedProducts.map(product => {
+          const numPrice = typeof product.price === 'string'
+            ? parseFloat(product.price.replace(/[^\d.-]/g, ''))
+            : product.price;
+          return isNaN(numPrice) ? 0 : numPrice;
+        }),
+        0
+      );
+      setMaxPrice(highestPrice || 100000);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
 
   const applyFilters = (
     productsToFilter: Product[],
@@ -247,7 +164,8 @@ const Index = () => {
               <ProductsSection 
                 products={filteredProducts} 
                 isLoading={loading}
-                title={searchQuery ? `Resultados para "${searchQuery}"` : "Produtos em Destaque"} 
+                title={searchQuery ? `Resultados para "${searchQuery}"` : "Produtos em Destaque"}
+                onProductsChange={loadProducts}
               />
             </div>
           </div>
