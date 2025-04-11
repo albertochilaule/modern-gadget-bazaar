@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -11,8 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { Product } from "@/types/product";
 import { fetchProducts } from "@/services/productService";
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
+  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -55,10 +58,15 @@ const Index = () => {
       setMaxPrice(highestPrice || 100000);
     } catch (error) {
       console.error("Error fetching products:", error);
+      toast({
+        title: "Erro ao carregar produtos",
+        description: "Não foi possível carregar os produtos. Tente novamente mais tarde.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     loadProducts();

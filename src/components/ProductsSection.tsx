@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import ProductCard from '@/components/ProductCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { createProduct, updateProduct, deleteProduct } from '@/services/productService';
 import { useAuth } from '@/hooks/useAuth';
+import { determineStatus } from '@/types/product';
 
 export interface ProductsSectionProps {
   products: Product[];
@@ -103,6 +103,7 @@ const ProductsSection = ({ products, title, isLoading = false, onProductsChange 
         category: formData.category,
         price: formData.price,
         stock: formData.stock,
+        status: determineStatus(formData.stock),
         description: formData.description,
         image: formData.image,
         isPublished: formData.isPublished

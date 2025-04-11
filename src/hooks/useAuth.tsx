@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/utils/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +16,7 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   isAdmin: boolean;
   isCollaborator: boolean;
+  isAuthenticated: boolean;
   register?: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile?: (name: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword?: (password: string) => Promise<{ success: boolean; error?: string }>;
@@ -28,7 +28,8 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => ({ success: false }),
   logout: async () => {},
   isAdmin: false,
-  isCollaborator: false
+  isCollaborator: false,
+  isAuthenticated: false
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -44,9 +45,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const isAdmin = user?.role === 'admin';
   const isCollaborator = user?.role === 'colaborador';
+  const isAuthenticated = !!user;
 
   useEffect(() => {
-    // Check if user is stored in localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
@@ -60,7 +61,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     
     setIsLoading(false);
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state changed:', event);
@@ -79,7 +79,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (email: string, password: string) => {
     try {
-      // Local auth bypass for specified users
       if (email === 'admin@centurytech.com' && password === 'senha123') {
         const adminUser = {
           id: 'admin-local-id',
@@ -106,7 +105,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { success: true };
       }
       
-      // Fall back to Supabase auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -202,7 +200,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       if (!user) throw new Error('Usuário não está logado');
       
-      // For local users, just update the localStorage
       if (user.id === 'admin-local-id' || user.id === 'colaborador-local-id') {
         const updatedUser = { ...user, name };
         setUser(updatedUser);
@@ -248,7 +245,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       if (!user) throw new Error('Usuário não está logado');
       
-      // Local users don't need password updates
       if (user.id === 'admin-local-id' || user.id === 'colaborador-local-id') {
         return { success: true };
       }
@@ -285,6 +281,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         logout,
         isAdmin,
         isCollaborator,
+        isAuthenticated,
         register,
         updateProfile,
         updatePassword
